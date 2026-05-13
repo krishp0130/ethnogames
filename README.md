@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ethnogames
+
+Play traditional card games from around the world with friends and family — online, in real time.
+
+## Games
+
+### Mendicot (Mendikot)
+
+A beloved Indian trick-taking card game for 4 players in 2 partnerships. Capture the Tens to win!
+
+- **Players:** 4 (2v2 teams)
+- **Deck:** Standard 52 cards
+- **Trump:** Set dynamically when a player first can't follow suit
+- **Win condition:** Capture 3+ Tens, or win more tricks when Tens are split 2-2
+
+## Tech Stack
+
+- **Frontend:** Next.js, React, TypeScript, Tailwind CSS
+- **Animations:** Framer Motion
+- **Real-time:** Socket.IO (authoritative server model)
+- **State:** Redis (game lobby and in-progress game state)
+- **Server:** Node.js + Express
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 20+
+- Redis (optional — falls back to in-memory storage)
+
+### Install
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Run both the game server and Next.js frontend:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Terminal 1 — Game server (port 3001)
+npm run dev:server
 
-## Learn More
+# Terminal 2 — Frontend (port 3000)
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Or run both together:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run dev:all
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Then open [http://localhost:3000](http://localhost:3000).
 
-## Deploy on Vercel
+### How to Play
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Go to **Play Now** → enter your name → **Create Room**
+2. Share the room code with friends, or click **Add Bot** to fill seats
+3. Once 4 players are in, click **Start Game**
+4. Play cards by clicking them — the server enforces all rules
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Architecture
+
+The game uses an **authoritative server model**:
+
+- All game logic runs on the server
+- Clients send actions (`play_card`, `create_room`, etc.)
+- The server validates moves and broadcasts state to all players
+- Each player only receives their own hand; other players' cards are hidden
+- Redis stores active game rooms with automatic TTL expiry
+
+## Project Structure
+
+```
+├── src/                    # Next.js frontend
+│   ├── app/
+│   │   ├── page.tsx        # Landing page
+│   │   ├── mendicot/
+│   │   │   ├── page.tsx    # Mendicot rules & info
+│   │   │   └── play/
+│   │   │       └── page.tsx # Game lobby + board
+│   ├── components/         # React components
+│   ├── lib/                # Socket.IO client
+│   └── types/              # Shared TypeScript types
+├── server/                 # Game server
+│   ├── index.ts            # Express + Socket.IO entry
+│   ├── redis.ts            # Redis client with fallback
+│   └── game/
+│       ├── engine.ts       # Authoritative game engine
+│       ├── deck.ts         # Deck utilities
+│       └── ai.ts           # Bot AI
+└── package.json
+```
