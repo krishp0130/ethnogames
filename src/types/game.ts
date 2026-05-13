@@ -108,7 +108,7 @@ export interface LobbyRoom {
 export interface ServerToClientEvents {
   game_state: (state: ClientGameState, hand: Card[]) => void;
   lobby_update: (rooms: LobbyRoom[]) => void;
-  room_joined: (roomId: string, playerIndex: number) => void;
+  room_joined: (roomId: string, playerIndex: number, playerId: string) => void;
   error: (message: string) => void;
   trick_complete: (trick: TrickCard[], winnerIndex: number) => void;
   trump_set: (suit: Suit, playerName: string) => void;
@@ -117,6 +117,8 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   create_room: (playerName: string) => void;
   join_room: (roomId: string, playerName: string) => void;
+  /** Same browser session after refresh — reclaim seat by stable player id */
+  rejoin_room: (roomId: string, playerId: string) => void;
   start_game: () => void;
   play_card: (cardId: string) => void;
   request_lobby: () => void;

@@ -19,7 +19,7 @@ export default function HomePage() {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative flex-1 flex items-center justify-center overflow-hidden px-6 py-24">
+      <section className="relative flex-1 flex items-center justify-center overflow-hidden px-4 sm:px-6 py-16 sm:py-24">
         {/* Animated background */}
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(251,191,36,0.08),transparent_50%)]" />
@@ -35,7 +35,7 @@ export default function HomePage() {
             style={{ left: c.x, top: c.y }}
             initial={{ opacity: 0, scale: 0.5, rotate: c.rotate - 20 }}
             animate={{
-              opacity: 0.06,
+              opacity: 0.32,
               scale: 1,
               rotate: c.rotate,
               y: [0, -12, 0],
@@ -47,8 +47,17 @@ export default function HomePage() {
               y: { duration: 4, repeat: Infinity, ease: "easeInOut", delay: c.delay },
             }}
           >
-            <div className="w-20 h-28 bg-white rounded-xl flex flex-col items-center justify-center text-4xl font-bold text-gray-800 shadow-2xl">
-              <span className={c.suit === "♥" || c.suit === "♦" ? "text-red-500" : "text-gray-800"}>
+            <div className="w-20 h-28 rounded-xl border border-white/25 bg-white/95 shadow-2xl shadow-black/40 flex flex-col items-center justify-center gap-0.5 backdrop-blur-sm">
+              <span className="text-[10px] font-bold leading-none text-zinc-500">
+                {c.rank}
+              </span>
+              <span
+                className={
+                  c.suit === "♥" || c.suit === "♦"
+                    ? "text-4xl font-bold leading-none text-red-600"
+                    : "text-4xl font-bold leading-none text-zinc-950 drop-shadow-[0_1px_0_rgba(255,255,255,0.5)]"
+                }
+              >
                 {c.suit}
               </span>
             </div>
@@ -96,7 +105,7 @@ export default function HomePage() {
           >
             <Link
               href="/mendicot/play"
-              className="group relative px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg rounded-2xl shadow-xl shadow-amber-500/25 hover:shadow-amber-500/40 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="group relative w-full sm:w-auto min-h-[48px] inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-lg rounded-2xl shadow-xl shadow-amber-500/25 hover:shadow-amber-500/40 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               Start Playing
               <span className="ml-2 inline-block group-hover:translate-x-1 transition-transform">
@@ -105,7 +114,7 @@ export default function HomePage() {
             </Link>
             <Link
               href="/mendicot"
-              className="px-8 py-4 bg-white/[0.06] border border-white/[0.1] text-white font-semibold text-lg rounded-2xl hover:bg-white/[0.1] transition-all"
+              className="w-full sm:w-auto min-h-[48px] inline-flex items-center justify-center px-8 py-4 bg-white/[0.06] border border-white/[0.1] text-white font-semibold text-lg rounded-2xl hover:bg-white/[0.1] transition-all"
             >
               Learn Mendicot
             </Link>
@@ -114,7 +123,7 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="relative px-6 py-24 border-t border-white/[0.06]">
+      <section className="relative px-4 sm:px-6 py-16 sm:py-24 border-t border-white/[0.06]">
         <div className="max-w-6xl mx-auto">
           <motion.div
             className="text-center mb-16"
@@ -155,7 +164,7 @@ export default function HomePage() {
       </section>
 
       {/* Game Showcase */}
-      <section className="relative px-6 py-24 border-t border-white/[0.06]">
+      <section className="relative px-4 sm:px-6 py-16 sm:py-24 border-t border-white/[0.06]">
         <div className="max-w-6xl mx-auto">
           <motion.div
             className="text-center mb-16"
@@ -197,8 +206,8 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/[0.06] px-6 py-8">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+      <footer className="border-t border-white/[0.06] px-4 sm:px-6 py-8">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
               <span className="text-white font-black text-xs">E</span>

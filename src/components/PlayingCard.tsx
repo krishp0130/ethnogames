@@ -3,16 +3,54 @@
 import { motion } from "framer-motion";
 import { Card, SUIT_SYMBOLS } from "@/types/game";
 
+export type CardSize = "sm" | "md" | "lg";
+
+const SIZE_CONFIG: Record<CardSize, {
+  card: string;
+  padding: string;
+  rankText: string;
+  suitCorner: string;
+  suitCenter: string;
+  backInner: string;
+}> = {
+  sm: {
+    card: "w-10 h-14 rounded-md",
+    padding: "px-1 py-0.5",
+    rankText: "text-[9px]",
+    suitCorner: "text-[8px]",
+    suitCenter: "text-base",
+    backInner: "w-6 h-9",
+  },
+  md: {
+    card: "w-14 h-20 rounded-lg",
+    padding: "px-1.5 py-1",
+    rankText: "text-xs",
+    suitCorner: "text-[10px]",
+    suitCenter: "text-2xl",
+    backInner: "w-9 h-14",
+  },
+  lg: {
+    card: "w-[4.5rem] h-[6.5rem] rounded-xl",
+    padding: "px-2 py-1.5",
+    rankText: "text-sm",
+    suitCorner: "text-[11px]",
+    suitCenter: "text-3xl",
+    backInner: "w-12 h-18",
+  },
+};
+
 interface PlayingCardProps {
   card: Card;
   onClick?: () => void;
   disabled?: boolean;
   highlighted?: boolean;
   faceDown?: boolean;
-  small?: boolean;
+  size?: CardSize;
   className?: string;
   layoutId?: string;
   animate?: boolean;
+  /** Parent handles hover lift in fanned hands — avoids conflicting transforms with Framer */
+  suppressWhileHover?: boolean;
 }
 
 export default function PlayingCard({
@@ -21,14 +59,16 @@ export default function PlayingCard({
   disabled,
   highlighted,
   faceDown,
-  small,
+  size = "lg",
   className = "",
   layoutId,
   animate = true,
+  suppressWhileHover = false,
 }: PlayingCardProps) {
   const isRed = card.suit === "hearts" || card.suit === "diamonds";
   const symbol = SUIT_SYMBOLS[card.suit];
   const colorClass = isRed ? "text-red-600" : "text-gray-900";
+  const cfg = SIZE_CONFIG[size];
 
   const MotionOrDiv = animate ? motion.div : "div";
   const motionProps = animate
@@ -45,7 +85,7 @@ export default function PlayingCard({
     return (
       <MotionOrDiv
         className={`
-          ${small ? "w-10 h-14 rounded-md" : "w-[4.5rem] h-[6.5rem] rounded-xl"}
+          ${cfg.card}
           bg-gradient-to-br from-indigo-600 to-indigo-900
           border border-indigo-400/20
           shadow-lg
@@ -57,7 +97,7 @@ export default function PlayingCard({
       >
         <div
           className={`
-            ${small ? "w-6 h-9" : "w-12 h-18"}
+            ${cfg.backInner}
             rounded-sm border border-indigo-300/10
             bg-[repeating-linear-gradient(45deg,transparent,transparent_2px,rgba(255,255,255,0.03)_2px,rgba(255,255,255,0.03)_4px)]
           `}
@@ -72,11 +112,11 @@ export default function PlayingCard({
       onClick={disabled ? undefined : onClick}
       disabled={disabled && !onClick}
       className={`
-        ${small ? "w-10 h-14 rounded-md" : "w-[4.5rem] h-[6.5rem] rounded-xl"}
+        ${cfg.card}
         bg-white
         border-2 shadow-lg
         flex flex-col items-center justify-between
-        ${small ? "p-0.5" : "p-1.5"} select-none
+        ${cfg.padding} select-none
         transition-colors duration-100
         ${colorClass}
         ${highlighted
@@ -100,20 +140,20 @@ export default function PlayingCard({
       exit={{ scale: 0.5, opacity: 0 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
       whileHover={
-        onClick && !disabled
-          ? { y: -8, scale: 1.05, transition: { duration: 0.15 } }
-          : {}
+        suppressWhileHover || disabled || !onClick
+          ? undefined
+          : { y: -8, scale: 1.05, transition: { duration: 0.15 } }
       }
-      whileTap={onClick && !disabled ? { scale: 0.95 } : {}}
+      whileTap={suppressWhileHover || !onClick || disabled ? undefined : { scale: 0.95 }}
     >
       <div className="self-start leading-none font-bold">
-        <div className={small ? "text-[8px]" : "text-xs"}>{card.rank}</div>
-        <div className={small ? "text-[8px]" : "text-[10px]"}>{symbol}</div>
+        <div className={cfg.rankText}>{card.rank}</div>
+        <div className={cfg.suitCorner}>{symbol}</div>
       </div>
-      <div className={small ? "text-base" : "text-2xl"}>{symbol}</div>
+      <div className={cfg.suitCenter}>{symbol}</div>
       <div className="self-end leading-none font-bold rotate-180">
-        <div className={small ? "text-[8px]" : "text-xs"}>{card.rank}</div>
-        <div className={small ? "text-[8px]" : "text-[10px]"}>{symbol}</div>
+        <div className={cfg.rankText}>{card.rank}</div>
+        <div className={cfg.suitCorner}>{symbol}</div>
       </div>
     </motion.button>
   );

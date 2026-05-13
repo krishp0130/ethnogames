@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, ClientGameState, SUIT_SYMBOLS } from "@/types/game";
 import type { GameSocket } from "@/lib/socket";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import PlayerHand from "./PlayerHand";
 import TrickArea from "./TrickArea";
 import ScoreBoard from "./ScoreBoard";
@@ -22,6 +23,7 @@ function getRelativeSeat(seatIndex: number, myIndex: number): number {
 
 export default function GameBoard({ socket, state, hand }: GameBoardProps) {
   const myIndex = state.myIndex;
+  const compactLayout = useMediaQuery("(max-width: 639.98px)");
 
   const handlePlayCard = useCallback(
     (cardId: string) => {
@@ -47,7 +49,7 @@ export default function GameBoard({ socket, state, hand }: GameBoardProps) {
     .sort((a, b) => a.relativePos - b.relativePos);
 
   return (
-    <div className="flex gap-6 items-start justify-center w-full max-w-7xl mx-auto p-4">
+    <div className="flex gap-4 lg:gap-6 items-start justify-center w-full max-w-7xl mx-auto px-2 py-2 sm:p-4">
       {/* Scoreboard (desktop) */}
       <div className="hidden lg:block flex-shrink-0 sticky top-20">
         <ScoreBoard state={state} />
@@ -55,31 +57,37 @@ export default function GameBoard({ socket, state, hand }: GameBoardProps) {
 
       <div className="flex-1 flex flex-col items-center gap-4">
         {/* Mobile score strip */}
-        <div className="lg:hidden w-full flex items-center justify-between bg-white/[0.04] backdrop-blur-sm rounded-xl border border-white/[0.08] px-4 py-2.5 text-sm">
-          <div>
-            <span className="text-emerald-400 font-semibold">T1</span>{" "}
-            <span className="font-bold">{state.score[0]}</span>
+        <div className="lg:hidden w-full flex flex-col gap-1.5 bg-white/[0.04] backdrop-blur-sm rounded-xl border border-white/[0.08] px-3 py-2.5 text-sm">
+          <div className="flex items-center justify-between gap-2">
+            <div className="shrink-0">
+              <span className="text-emerald-400 font-semibold">T1</span>{" "}
+              <span className="font-bold">{state.score[0]}</span>
+            </div>
+            <div className="text-[11px] text-zinc-500 text-center leading-snug min-w-0 flex-1">
+              Tricks {state.teamTricks[0]}–{state.teamTricks[1]} · Tens{" "}
+              {state.teamTens[0]}–{state.teamTens[1]}
+              {state.trumpSuit && state.trumpRevealed && (
+                <span className="text-amber-400">
+                  {" "}
+                  · Trump {SUIT_SYMBOLS[state.trumpSuit]}
+                </span>
+              )}
+            </div>
+            <div className="shrink-0">
+              <span className="text-blue-400 font-semibold">T2</span>{" "}
+              <span className="font-bold">{state.score[1]}</span>
+            </div>
           </div>
-          <div className="text-xs text-zinc-500">
-            Tricks {state.teamTricks[0]}–{state.teamTricks[1]} | Tens{" "}
-            {state.teamTens[0]}–{state.teamTens[1]}
-            {state.trumpSuit && state.trumpRevealed && (
-              <span className="ml-2 text-amber-400">
-                {SUIT_SYMBOLS[state.trumpSuit]}
-              </span>
-            )}
-          </div>
-          <div>
-            <span className="text-blue-400 font-semibold">T2</span>{" "}
-            <span className="font-bold">{state.score[1]}</span>
+          <div className="text-center text-[11px] text-zinc-600">
+            Trick {state.trickNumber} / 13
           </div>
         </div>
 
-        {/* Game table */}
-        <div className="relative w-full max-w-2xl aspect-square felt-bg rounded-3xl border border-emerald-700/20 shadow-2xl shadow-black/50 overflow-hidden">
+        {/* Game table — slightly taller on phones so edge hands fit */}
+        <div className="relative w-full max-w-2xl mx-auto aspect-[10/11] sm:aspect-square max-sm:max-h-[min(92vw,calc(100dvh-12.5rem))] felt-bg rounded-2xl sm:rounded-3xl border border-emerald-700/20 shadow-2xl shadow-black/50">
           {/* Subtle inner glow */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(16,185,129,0.06),transparent_70%)]" />
-          <div className="absolute inset-5 rounded-2xl border border-emerald-600/10" />
+          <div className="absolute inset-3 sm:inset-5 rounded-xl sm:rounded-2xl border border-emerald-600/10" />
 
           {/* Trick area (center) */}
           <div className="absolute inset-0 flex items-center justify-center z-10">
@@ -107,6 +115,7 @@ export default function GameBoard({ socket, state, hand }: GameBoardProps) {
                 isCurrentTurn={state.currentPlayerIndex === player.seatIndex && state.phase === "playing"}
                 isMe={isMe}
                 onCardClick={handlePlayCard}
+                compact={compactLayout}
               />
             );
           })}
@@ -121,7 +130,7 @@ export default function GameBoard({ socket, state, hand }: GameBoardProps) {
                 exit={{ opacity: 0 }}
               >
                 <motion.div
-                  className="bg-zinc-900/95 border border-white/[0.1] rounded-2xl p-8 text-center max-w-sm shadow-2xl"
+                  className="bg-zinc-900/95 border border-white/[0.1] rounded-2xl p-5 sm:p-8 text-center w-[min(calc(100vw-1.5rem),24rem)] max-h-[85dvh] overflow-y-auto overscroll-contain shadow-2xl"
                   initial={{ scale: 0.8, y: 20 }}
                   animate={{ scale: 1, y: 0 }}
                   exit={{ scale: 0.8, y: 20 }}
@@ -162,8 +171,9 @@ export default function GameBoard({ socket, state, hand }: GameBoardProps) {
                       </div>
 
                       <button
+                        type="button"
                         onClick={handleNextHand}
-                        className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        className="w-full sm:w-auto min-h-[48px] px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
                       >
                         Next Hand
                       </button>
@@ -188,8 +198,9 @@ export default function GameBoard({ socket, state, hand }: GameBoardProps) {
                         Final: {state.score[0]} – {state.score[1]}
                       </p>
                       <button
+                        type="button"
                         onClick={handleNewGame}
-                        className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.02]"
+                        className="w-full sm:w-auto min-h-[48px] px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.02]"
                       >
                         Play Again
                       </button>
@@ -203,7 +214,7 @@ export default function GameBoard({ socket, state, hand }: GameBoardProps) {
 
         {/* Status bar */}
         <motion.div
-          className="text-center text-zinc-300 text-sm bg-white/[0.04] px-5 py-2.5 rounded-xl border border-white/[0.06]"
+          className="text-center text-zinc-300 text-xs sm:text-sm bg-white/[0.04] px-3 sm:px-5 py-2.5 rounded-xl border border-white/[0.06] max-w-full mx-1"
           key={state.message}
           initial={{ opacity: 0, y: 5 }}
           animate={{ opacity: 1, y: 0 }}
