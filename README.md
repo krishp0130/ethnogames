@@ -14,6 +14,8 @@ Play traditional card games from around the world with friends and family — on
 - [Socket.IO Protocol](#socketio-protocol)
 - [Game Rules: Mendicot](#game-rules-mendicot)
 - [Environment Variables](#environment-variables)
+- [Deployment](#deployment)
+- [Testing](#testing)
 - [Scripts Reference](#scripts-reference)
 - [Contributing](#contributing)
 
@@ -48,6 +50,7 @@ A beloved Indian trick-taking card game for 4 players in 2 partnerships. Capture
 | **Real-time**  | Socket.IO (WebSocket + polling fallback)  |
 | **Server**     | Node.js, Express 5                        |
 | **State**      | Redis (with automatic in-memory fallback) |
+| **Testing**    | Vitest (game engine, deck, server env)    |
 | **Dev tools**  | tsx (TypeScript execution), ESLint         |
 
 ---
@@ -125,6 +128,12 @@ The application follows an **authoritative server model** — all game logic exe
 
 - **Personalized state**: Each player receives a tailored view of the game. They see their own hand but only card counts for opponents. The server calls `toClientState(state, playerIndex)` to strip hidden information before sending.
 
+- **Session rejoin**: After a page refresh, the play page sends `rejoin_room` using `roomId` + `playerId` stored in `sessionStorage` so the server can reattach the new socket to the same seat.
+
+- **Production CORS**: Allowed browser origins come from `CLIENT_ORIGINS` (comma-separated). Defaults to `http://localhost:3000` for development.
+
+- **Lobby listing**: Open rooms are listed with Redis `SCAN` + pipeline reads (not `KEYS`) so listing stays safe as key counts grow.
+
 - **Per-room mutex**: A promise-based lock serializes all state mutations for a given room. This prevents race conditions when multiple Socket.IO events arrive concurrently (e.g. two "add bot" clicks in rapid succession).
 
 - **Redis with fallback**: Game rooms are stored in Redis with a 1-hour TTL for automatic cleanup. If Redis is unavailable, the server transparently falls back to an in-memory `Map`. No configuration needed — it just works.
@@ -155,12 +164,14 @@ ethnogames/
 │   │   ├── TrickArea.tsx           # Center of table — cards animate in from each seat
 │   │   └── ScoreBoard.tsx          # Team scores, trick count, tens, trump indicator
 │   ├── lib/
-│   │   └── socket.ts              # Socket.IO client singleton (connect/disconnect)
+│   │   ├── socket.ts               # Socket.IO client singleton (connect/disconnect)
+│   │   └── useMediaQuery.ts        # Responsive layout helper for the game table
 │   └── types/
 │       └── game.ts                # Shared types used by both client and server
 │
 ├── server/                         # Game server (runs independently from Next.js)
 │   ├── index.ts                    # Express + Socket.IO entry point, event handlers
+│   ├── env.ts                      # CORS allow-list from `CLIENT_ORIGINS` / `CORS_ORIGINS`
 │   ├── redis.ts                    # Redis client with in-memory fallback
 │   ├── tsconfig.json               # Server-specific TypeScript config
 │   └── game/
@@ -168,6 +179,10 @@ ethnogames/
 │       ├── deck.ts                 # Deck creation, shuffle, deal, sort, rank utilities
 │       └── ai.ts                   # Bot AI — strategic card selection
 │
+├── vitest.config.ts                # Vitest (unit tests)
+├── .github/
+│   └── workflows/
+│       └── ci.yml                  # CI: lint, test, build on PR / push to main
 ├── package.json                    # Dependencies and scripts
 ├── tsconfig.json                   # Frontend TypeScript config
 ├── next.config.ts                  # Next.js configuration
@@ -194,13 +209,14 @@ All communication between client and server happens over Socket.IO. The types ar
 | `next_hand`      | *(none)*                         | Start the next hand after one completes     |
 | `new_game`       | *(none)*                         | Reset scores and start a fresh game         |
 | `request_lobby`  | *(none)*                         | Request list of open rooms                  |
+| `rejoin_room`    | `roomId: string, playerId: string` | After a refresh, reclaim your seat using the stored player id |
 
 ### Server → Client Events
 
 | Event            | Payload                              | Description                                          |
 | ---------------- | ------------------------------------ | ---------------------------------------------------- |
 | `game_state`     | `state: ClientGameState, hand: Card[]` | Full game state update (personalized per player)   |
-| `room_joined`    | `roomId: string, playerIndex: number`| Confirmation that the player joined a room           |
+| `room_joined`    | `roomId, playerIndex, playerId`      | Confirms join/create/rejoin — keep `playerId` to reconnect after refresh |
 | `lobby_update`   | `rooms: LobbyRoom[]`                | List of available rooms                              |
 | `trick_complete` | `trick: TrickCard[], winnerIndex: number` | A trick was won — shown before clearing cards   |
 | `trump_set`      | `suit: Suit, playerName: string`     | Trump suit was just established                      |
@@ -260,14 +276,62 @@ First team to reach **5 points** wins.
 
 ## Environment Variables
 
-All optional — the app works with zero configuration.
+Most are optional for local development. **Production** should set CORS and the public game-server URL.
 
-| Variable                  | Default                  | Description                          |
-| ------------------------- | ------------------------ | ------------------------------------ |
-| `PORT`                    | `3001`                   | Game server port                     |
-| `REDIS_HOST`              | `127.0.0.1`              | Redis host                           |
-| `REDIS_PORT`              | `6379`                   | Redis port                           |
-| `NEXT_PUBLIC_SERVER_URL`  | `http://localhost:3001`  | Socket.IO server URL (for frontend)  |
+| Variable                   | Default                    | Description |
+| -------------------------- | -------------------------- | ----------- |
+| `PORT`                     | `3001`                     | Game server listen port |
+| `HOST`                     | `0.0.0.0`                  | Bind address (`0.0.0.0` for Docker / PaaS) |
+| `CLIENT_ORIGINS`           | `http://localhost:3000`    | Comma-separated allowed **browser** origins for CORS + Socket.IO (e.g. `https://yourapp.com,https://www.yourapp.com`) |
+| `CORS_ORIGINS`             | —                          | Alias of `CLIENT_ORIGINS` |
+| `REDIS_URL`                | —                          | Full Redis URL (e.g. from Railway/Render). If set, overrides `REDIS_HOST` / `REDIS_PORT` |
+| `REDIS_HOST`               | `127.0.0.1`                | Redis host when `REDIS_URL` is unset |
+| `REDIS_PORT`               | `6379`                     | Redis port when `REDIS_URL` is unset |
+| `NEXT_PUBLIC_SERVER_URL`   | `http://localhost:3001`    | Socket.IO endpoint for the **Next.js build** (must be the URL players’ browsers can reach, including `wss://` on HTTPS sites) |
+
+`NEXT_PUBLIC_*` is inlined at **build time**. Rebuild the frontend after changing it.
+
+---
+
+## Deployment
+
+The app is **two services**: the Next.js site (static + SSR shell) and the **Node game server** (`server/index.ts`). Each room is isolated in shared storage (Redis) with a per-room lock on the game process; many lobbies and many concurrent games work on a **single** game-server instance.
+
+### Checklist
+
+1. **Run Redis** in production so all rooms survive restarts and every game-server instance sees the same room keys (Upstash, ElastiCache, Railway Redis, etc.).
+2. Set **`CLIENT_ORIGINS`** to your real site origin(s) exactly as the browser uses them (scheme + host + port).
+3. Set **`NEXT_PUBLIC_SERVER_URL`** to the public WebSocket base URL of the game server, then **`npm run build`** for the frontend.
+4. Expose **`GET /health`** on the game server for load balancer health checks.
+5. Run **`npm run start`** (Next) and **`npm run start:server`** (game server), or your process manager / container entrypoint for both.
+
+### Horizontal scaling (multiple game-server replicas)
+
+Today, **in-memory** data includes the Socket.IO room membership map and per-room mutexes. **Redis** already holds authoritative game state, but **broadcasts** use `io.to(socketId)` and require the socket to be on **that** Node process unless you add:
+
+- **`@socket.io/redis-adapter`** (or another adapter) so emits reach every replica, and  
+- **Sticky sessions** at the load balancer so a player’s WebSocket stays pinned to one instance (or migrate fully to Redis adapter + shared presence).
+
+Until then, run **one** game-server replica, or accept that multi-replica setups need the adapter.
+
+### Redis vs a traditional database
+
+For this product, **Redis is appropriate**: room state is ephemeral, TTL-based cleanup is natural, reads/writes are small JSON blobs, and latency matters for every card play. A **relational DB** (PostgreSQL, etc.) is worth adding when you need durable **accounts**, **match history / replays**, **moderation audit logs**, or **analytics** across restarts—not as a drop-in replacement for every bit of session state. You can keep Redis for live games and add Postgres later for profiles and history without changing the real-time model.
+
+---
+
+## Testing
+
+Unit tests use **Vitest** and target server-side logic (deterministic, no sockets in CI).
+
+```bash
+npm run test        # run once (CI)
+npm run test:watch  # watch mode during development
+```
+
+Tests live next to code as `*.test.ts` (for example `server/game/engine.test.ts`, `server/game/deck.test.ts`, `server/env.test.ts`).
+
+GitHub Actions runs **`npm ci`**, **`lint`**, **`test`**, and **`build`** on pushes and pull requests to `main` (see `.github/workflows/ci.yml`).
 
 ---
 
@@ -282,6 +346,8 @@ All optional — the app works with zero configuration.
 | `npm run start`    | `next start`                    | Serve the production frontend build           |
 | `npm run start:server` | `tsx server/index.ts`       | Start game server without hot reload          |
 | `npm run lint`     | `eslint`                        | Run ESLint across the project                 |
+| `npm run test`     | `vitest run`                    | Run unit tests once                           |
+| `npm run test:watch` | `vitest`                     | Run unit tests in watch mode                  |
 
 ---
 
@@ -290,7 +356,7 @@ All optional — the app works with zero configuration.
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/new-game`)
 3. Make your changes
-4. Ensure `npm run build` passes and `npm run lint` is clean
+4. Ensure `npm run lint`, `npm run test`, and `npm run build` pass
 5. Commit and push
 6. Open a pull request
 

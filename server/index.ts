@@ -2,6 +2,7 @@ import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
+import { allowedOrigins, corsOriginValidator } from "./env";
 import type {
   ServerToClientEvents,
   ClientToServerEvents,
@@ -20,13 +21,17 @@ import { aiSelectCard } from "./game/ai";
 import { saveRoom, getRoom, deleteRoom, listRooms } from "./redis";
 
 const app = express();
-app.use(cors({ origin: "http://localhost:3000" }));
+app.use(cors({ origin: corsOriginValidator, credentials: true }));
+app.get("/health", (_req, res) => {
+  res.status(200).json({ ok: true, service: "ethnogames-game" });
+});
 
 const httpServer = createServer(app);
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 
@@ -49,8 +54,21 @@ async function withRoomLock<T>(roomId: string, fn: () => Promise<T>): Promise<T>
   }
 }
 
+function errMessage(err: unknown, fallback: string): string {
+  return err instanceof Error && err.message ? err.message : fallback;
+}
+
 function generateRoomId(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+async function allocateUnusedRoomId(): Promise<string> {
+  for (let attempt = 0; attempt < 16; attempt++) {
+    const roomId = generateRoomId();
+    const existing = await getRoom(roomId);
+    if (!existing) return roomId;
+  }
+  throw new Error("Could not allocate a room code");
 }
 
 function generatePlayerId(): string {
@@ -131,10 +149,10 @@ io.on("connection", (socket) => {
 
   socket.on("create_room", async (playerName) => {
     try {
-      const roomId = generateRoomId();
+      const roomId = await allocateUnusedRoomId();
       const playerId = generatePlayerId();
 
-      let state = createRoom(roomId, {
+      const state = createRoom(roomId, {
         id: playerId,
         socketId: socket.id,
         name: playerName,
@@ -144,15 +162,16 @@ io.on("connection", (socket) => {
       socket.join(roomId);
       socketRoomMap.set(socket.id, roomId);
 
-      socket.emit("room_joined", roomId, 0);
+      socket.emit("room_joined", roomId, 0, playerId);
       await broadcastGameState(state);
-    } catch (err: any) {
-      socket.emit("error", err.message ?? "Failed to create room");
+    } catch (err) {
+      socket.emit("error", errMessage(err, "Failed to create room"));
     }
   });
 
-  socket.on("join_room", async (roomId, playerName) => {
+  socket.on("join_room", async (roomIdRaw, playerName) => {
     try {
+      const roomId = roomIdRaw.trim().toUpperCase();
       await withRoomLock(roomId, async () => {
         let state = await getRoom(roomId);
         if (!state) {
@@ -172,11 +191,58 @@ io.on("connection", (socket) => {
         socket.join(roomId);
         socketRoomMap.set(socket.id, roomId);
 
-        socket.emit("room_joined", roomId, playerIndex);
+        socket.emit("room_joined", roomId, playerIndex, playerId);
         await broadcastGameState(state);
       });
-    } catch (err: any) {
-      socket.emit("error", err.message ?? "Failed to join room");
+    } catch (err) {
+      socket.emit("error", errMessage(err, "Failed to join room"));
+    }
+  });
+
+  socket.on("rejoin_room", async (roomIdRaw, playerId) => {
+    try {
+      const roomId = roomIdRaw.trim().toUpperCase();
+      if (!roomId || !playerId) {
+        socket.emit("error", "Invalid rejoin");
+        return;
+      }
+
+      await withRoomLock(roomId, async () => {
+        let state = await getRoom(roomId);
+        if (!state) {
+          socket.emit("error", "Room not found");
+          return;
+        }
+
+        const playerIndex = state.players.findIndex((p) => p.id === playerId);
+        if (playerIndex === -1) {
+          socket.emit("error", "Player not found in room");
+          return;
+        }
+
+        const target = state.players[playerIndex];
+        if (target.isBot) {
+          socket.emit("error", "Invalid rejoin");
+          return;
+        }
+
+        const players = state.players.map((p, i) =>
+          i === playerIndex
+            ? { ...p, socketId: socket.id, isConnected: true }
+            : p
+        );
+
+        state = { ...state, players };
+        await saveRoom(roomId, state);
+
+        socket.join(roomId);
+        socketRoomMap.set(socket.id, roomId);
+
+        socket.emit("room_joined", roomId, playerIndex, playerId);
+        await broadcastGameState(state);
+      });
+    } catch (err) {
+      socket.emit("error", errMessage(err, "Failed to rejoin room"));
     }
   });
 
@@ -198,8 +264,8 @@ io.on("connection", (socket) => {
         state = addBot(state);
         await broadcastGameState(state);
       });
-    } catch (err: any) {
-      socket.emit("error", err.message ?? "Failed to add bot");
+    } catch (err) {
+      socket.emit("error", errMessage(err, "Failed to add bot"));
     }
   });
 
@@ -223,8 +289,8 @@ io.on("connection", (socket) => {
       });
 
       playBotTurns(roomId);
-    } catch (err: any) {
-      socket.emit("error", err.message ?? "Failed to start game");
+    } catch (err) {
+      socket.emit("error", errMessage(err, "Failed to start game"));
     }
   });
 
@@ -285,8 +351,8 @@ io.on("connection", (socket) => {
       });
 
       if (shouldPlayBots) playBotTurns(roomId);
-    } catch (err: any) {
-      socket.emit("error", err.message ?? "Failed to play card");
+    } catch (err) {
+      socket.emit("error", errMessage(err, "Failed to play card"));
     }
   });
 
@@ -304,8 +370,8 @@ io.on("connection", (socket) => {
       });
 
       playBotTurns(roomId);
-    } catch (err: any) {
-      socket.emit("error", err.message ?? "Failed to start next hand");
+    } catch (err) {
+      socket.emit("error", errMessage(err, "Failed to start next hand"));
     }
   });
 
@@ -334,8 +400,8 @@ io.on("connection", (socket) => {
       });
 
       playBotTurns(roomId);
-    } catch (err: any) {
-      socket.emit("error", err.message ?? "Failed to start new game");
+    } catch (err) {
+      socket.emit("error", errMessage(err, "Failed to start new game"));
     }
   });
 
@@ -343,8 +409,8 @@ io.on("connection", (socket) => {
     try {
       const rooms = await listRooms();
       socket.emit("lobby_update", rooms);
-    } catch (err: any) {
-      socket.emit("error", err.message ?? "Failed to get lobby");
+    } catch (err) {
+      socket.emit("error", errMessage(err, "Failed to get lobby"));
     }
   });
 
@@ -387,7 +453,11 @@ io.on("connection", (socket) => {
   });
 });
 
-const PORT = parseInt(process.env.PORT || "3001");
-httpServer.listen(PORT, () => {
-  console.log(`[server] Mendicot server running on port ${PORT}`);
+const PORT = parseInt(process.env.PORT || "3001", 10);
+const HOST = process.env.HOST || "0.0.0.0";
+
+httpServer.listen(PORT, HOST, () => {
+  console.log(
+    `[server] Mendicot listening on http://${HOST}:${PORT} (CORS: ${allowedOrigins.join(", ")})`
+  );
 });

@@ -2,60 +2,56 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { LobbyRoom, ClientGameState, Card } from "@/types/game";
+import type { LobbyRoom, ClientGameState } from "@/types/game";
 import type { GameSocket } from "@/lib/socket";
 
 interface LobbyProps {
   socket: GameSocket;
-  onGameStart: (state: ClientGameState, hand: Card[]) => void;
+  waitingState: ClientGameState | null;
 }
 
-type LobbyView = "menu" | "create" | "browse" | "waiting";
+type LobbyView = "menu" | "browse" | "waiting";
 
-export default function Lobby({ socket, onGameStart }: LobbyProps) {
+export default function Lobby({ socket, waitingState }: LobbyProps) {
   const [view, setView] = useState<LobbyView>("menu");
   const [playerName, setPlayerName] = useState("");
   const [rooms, setRooms] = useState<LobbyRoom[]>([]);
   const [joinCode, setJoinCode] = useState("");
   const [currentRoom, setCurrentRoom] = useState<string | null>(null);
-  const [waitingState, setWaitingState] = useState<ClientGameState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const savedName = localStorage.getItem("ethnogames_name");
-    if (savedName) setPlayerName(savedName);
+    if (savedName) {
+      queueMicrotask(() => setPlayerName(savedName));
+    }
   }, []);
 
   useEffect(() => {
-    socket.on("lobby_update", (lobbyRooms) => {
+    const onLobbyUpdate = (lobbyRooms: LobbyRoom[]) => {
       setRooms(lobbyRooms);
-    });
+    };
 
-    socket.on("room_joined", (roomId) => {
+    const onRoomJoined = (roomId: string) => {
       setCurrentRoom(roomId);
       setView("waiting");
       setError(null);
-    });
+    };
 
-    socket.on("game_state", (state, hand) => {
-      if (state.phase === "waiting") {
-        setWaitingState(state);
-      } else {
-        onGameStart(state, hand);
-      }
-    });
-
-    socket.on("error", (msg) => {
+    const onError = (msg: string) => {
       setError(msg);
-    });
+    };
+
+    socket.on("lobby_update", onLobbyUpdate);
+    socket.on("room_joined", onRoomJoined);
+    socket.on("error", onError);
 
     return () => {
-      socket.off("lobby_update");
-      socket.off("room_joined");
-      socket.off("game_state");
-      socket.off("error");
+      socket.off("lobby_update", onLobbyUpdate);
+      socket.off("room_joined", onRoomJoined);
+      socket.off("error", onError);
     };
-  }, [socket, onGameStart]);
+  }, [socket]);
 
   const saveName = useCallback(() => {
     if (playerName.trim()) {
@@ -86,36 +82,44 @@ export default function Lobby({ socket, onGameStart }: LobbyProps) {
     setView("browse");
   };
 
+  const handleCreateFromMenu = () => {
+    if (!playerName.trim()) {
+      setError("Enter your name");
+      return;
+    }
+    setError(null);
+    handleCreate();
+  };
+
+  const handleJoinFromMenu = () => {
+    if (!playerName.trim()) {
+      setError("Enter your name");
+      return;
+    }
+    const code = joinCode.trim().toUpperCase();
+    if (!code) {
+      setError("Enter a room code");
+      return;
+    }
+    setError(null);
+    handleJoin(code);
+  };
+
   return (
-    <div className="min-h-[60vh] flex items-center justify-center p-6">
+    <div className="min-h-[60vh] flex items-center justify-center p-4 sm:p-6">
       <AnimatePresence mode="wait">
         {view === "menu" && (
           <MenuView
             key="menu"
             playerName={playerName}
             setPlayerName={setPlayerName}
-            onCreateClick={() => {
-              if (!playerName.trim()) return setError("Enter your name");
-              setView("create");
-            }}
+            joinCode={joinCode}
+            setJoinCode={setJoinCode}
+            onCreateRoom={handleCreateFromMenu}
+            onJoinWithCode={handleJoinFromMenu}
             onBrowseClick={() => {
               if (!playerName.trim()) return setError("Enter your name");
               handleBrowse();
-            }}
-            error={error}
-          />
-        )}
-
-        {view === "create" && (
-          <CreateView
-            key="create"
-            playerName={playerName}
-            onBack={() => setView("menu")}
-            onCreate={handleCreate}
-            joinCode={joinCode}
-            setJoinCode={setJoinCode}
-            onJoinDirect={() => {
-              if (joinCode.trim()) handleJoin(joinCode.trim().toUpperCase());
             }}
             error={error}
           />
@@ -148,13 +152,19 @@ export default function Lobby({ socket, onGameStart }: LobbyProps) {
 function MenuView({
   playerName,
   setPlayerName,
-  onCreateClick,
+  joinCode,
+  setJoinCode,
+  onCreateRoom,
+  onJoinWithCode,
   onBrowseClick,
   error,
 }: {
   playerName: string;
   setPlayerName: (v: string) => void;
-  onCreateClick: () => void;
+  joinCode: string;
+  setJoinCode: (v: string) => void;
+  onCreateRoom: () => void;
+  onJoinWithCode: () => void;
   onBrowseClick: () => void;
   error: string | null;
 }) {
@@ -167,10 +177,10 @@ function MenuView({
     >
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold mb-2">Mendicot</h2>
-        <p className="text-zinc-400">Enter your name to get started</p>
+        <p className="text-zinc-400">Enter your name, then create or join a room</p>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-5">
         <input
           type="text"
           value={playerName}
@@ -178,7 +188,7 @@ function MenuView({
           placeholder="Your name"
           maxLength={20}
           className="w-full px-4 py-3 bg-white/[0.06] border border-white/[0.1] rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 transition-all"
-          onKeyDown={(e) => e.key === "Enter" && onCreateClick()}
+          autoComplete="nickname"
         />
 
         {error && (
@@ -186,98 +196,45 @@ function MenuView({
         )}
 
         <button
-          onClick={onCreateClick}
-          className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 transition-all hover:scale-[1.01] active:scale-[0.99]"
+          type="button"
+          onClick={onCreateRoom}
+          className="w-full min-h-[48px] py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 transition-all hover:scale-[1.01] active:scale-[0.99]"
         >
           Create Room
         </button>
 
-        <button
-          onClick={onBrowseClick}
-          className="w-full py-3.5 bg-white/[0.06] border border-white/[0.1] text-white font-medium rounded-xl hover:bg-white/[0.1] transition-all"
-        >
-          Browse Rooms
-        </button>
-      </div>
-    </motion.div>
-  );
-}
-
-function CreateView({
-  playerName,
-  onBack,
-  onCreate,
-  joinCode,
-  setJoinCode,
-  onJoinDirect,
-  error,
-}: {
-  playerName: string;
-  onBack: () => void;
-  onCreate: () => void;
-  joinCode: string;
-  setJoinCode: (v: string) => void;
-  onJoinDirect: () => void;
-  error: string | null;
-}) {
-  return (
-    <motion.div
-      className="w-full max-w-md"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-    >
-      <button
-        onClick={onBack}
-        className="text-zinc-500 hover:text-white text-sm mb-6 flex items-center gap-1 transition-colors"
-      >
-        ← Back
-      </button>
-
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold mb-3">Create a new room</h3>
-          <p className="text-zinc-400 text-sm mb-4">
-            Playing as <span className="text-white font-medium">{playerName}</span>
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-zinc-300">Join a room</h3>
+          <p className="text-xs text-zinc-500">
+            Enter the 6-character code the host shared with you.
           </p>
-          <button
-            onClick={onCreate}
-            className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all"
-          >
-            Create Room
-          </button>
-        </div>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-white/[0.06]" />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+              placeholder="Code"
+              maxLength={6}
+              className="flex-1 min-w-0 px-4 py-3 bg-white/[0.06] border border-white/[0.1] rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50 font-mono text-center text-lg tracking-widest uppercase"
+              onKeyDown={(e) => e.key === "Enter" && onJoinWithCode()}
+            />
+            <button
+              type="button"
+              onClick={onJoinWithCode}
+              className="shrink-0 min-h-[48px] min-w-[48px] px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-xl hover:from-emerald-500 hover:to-teal-500 transition-all"
+            >
+              Join
+            </button>
           </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="bg-background px-3 text-zinc-500">or join with code</span>
-          </div>
         </div>
 
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-            placeholder="Room code"
-            maxLength={6}
-            className="flex-1 px-4 py-3 bg-white/[0.06] border border-white/[0.1] rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500/50 font-mono text-center text-lg tracking-widest uppercase"
-            onKeyDown={(e) => e.key === "Enter" && onJoinDirect()}
-          />
-          <button
-            onClick={onJoinDirect}
-            className="px-6 py-3 bg-white/[0.08] border border-white/[0.1] text-white font-medium rounded-xl hover:bg-white/[0.12] transition-all"
-          >
-            Join
-          </button>
-        </div>
-
-        {error && (
-          <p className="text-red-400 text-sm text-center">{error}</p>
-        )}
+        <button
+          type="button"
+          onClick={onBrowseClick}
+          className="w-full min-h-[48px] py-3.5 bg-white/[0.06] border border-white/[0.1] text-white font-medium rounded-xl hover:bg-white/[0.1] transition-all"
+        >
+          Browse open rooms
+        </button>
       </div>
     </motion.div>
   );
@@ -425,19 +382,19 @@ function WaitingView({
 
       <div className="space-y-3">
         {playerCount < 4 && (
-          <button
-            onClick={onAddBot}
-            className="w-full py-3 bg-white/[0.06] border border-white/[0.1] text-white font-medium rounded-xl hover:bg-white/[0.1] transition-all text-sm"
-          >
+        <button
+          onClick={onAddBot}
+          className="w-full min-h-[48px] py-3 bg-white/[0.06] border border-white/[0.1] text-white font-medium rounded-xl hover:bg-white/[0.1] transition-all text-sm"
+        >
             + Add Bot
           </button>
         )}
 
         <button
-          onClick={handleStartClick}
+          onClick={canStart ? onStart : undefined}
           disabled={!canStart}
           className={`
-            w-full py-3.5 font-bold rounded-xl transition-all text-sm
+            w-full min-h-[48px] py-3.5 font-bold rounded-xl transition-all text-sm
             ${canStart
               ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 hover:scale-[1.01]"
               : "bg-white/[0.04] text-zinc-600 cursor-not-allowed"
@@ -449,8 +406,4 @@ function WaitingView({
       </div>
     </motion.div>
   );
-
-  function handleStartClick() {
-    if (canStart) onStart();
-  }
 }

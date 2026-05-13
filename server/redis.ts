@@ -8,28 +8,57 @@ let redis: Redis | null = null;
 const fallbackStore = new Map<string, string>();
 let usingFallback = false;
 
+async function scanKeys(client: Redis, pattern: string): Promise<string[]> {
+  const keys: string[] = [];
+  let cursor = "0";
+  do {
+    const [next, batch] = await client.scan(
+      cursor,
+      "MATCH",
+      pattern,
+      "COUNT",
+      200
+    );
+    cursor = next;
+    keys.push(...batch);
+  } while (cursor !== "0");
+  return keys;
+}
+
 function getRedis(): Redis | null {
   if (usingFallback) return null;
   if (redis) return redis;
 
   try {
-    redis = new Redis({
-      host: process.env.REDIS_HOST || "127.0.0.1",
-      port: parseInt(process.env.REDIS_PORT || "6379"),
+    const url = process.env.REDIS_URL?.trim();
+    const common = {
       maxRetriesPerRequest: 1,
-      retryStrategy(times) {
+      retryStrategy(times: number) {
         if (times > 3) {
-          console.warn("[redis] Max retries reached, falling back to in-memory store");
+          console.warn(
+            "[redis] Max retries reached, falling back to in-memory store"
+          );
           usingFallback = true;
           return null;
         }
         return Math.min(times * 200, 2000);
       },
-    });
+    } as const;
+
+    redis = url
+      ? new Redis(url, common)
+      : new Redis({
+          host: process.env.REDIS_HOST || "127.0.0.1",
+          port: parseInt(process.env.REDIS_PORT || "6379", 10),
+          ...common,
+        });
 
     redis.on("error", (err) => {
       if (!usingFallback) {
-        console.warn("[redis] Connection error, using in-memory fallback:", err.message);
+        console.warn(
+          "[redis] Connection error, using in-memory fallback:",
+          err.message
+        );
         usingFallback = true;
         redis?.disconnect();
         redis = null;
@@ -103,14 +132,20 @@ export async function listRooms(): Promise<LobbyRoom[]> {
   const rooms: LobbyRoom[] = [];
   const client = getRedis();
 
-  let keys: string[] = [];
-
   if (client && !usingFallback) {
     try {
-      keys = await client.keys(ROOM_PREFIX + "*");
+      const keys = await scanKeys(client, ROOM_PREFIX + "*");
+      if (keys.length === 0) return [];
+
+      const pipeline = client.pipeline();
       for (const key of keys) {
-        const json = await client.get(key);
-        if (!json) continue;
+        pipeline.get(key);
+      }
+      const results = await pipeline.exec();
+      if (!results) return rooms;
+
+      for (const [, json] of results) {
+        if (typeof json !== "string" || !json) continue;
         const state = JSON.parse(json) as ServerGameState;
         rooms.push(stateToLobbyRoom(state));
       }
@@ -120,7 +155,8 @@ export async function listRooms(): Promise<LobbyRoom[]> {
     }
   }
 
-  for (const [, json] of fallbackStore) {
+  for (const [key, json] of fallbackStore) {
+    if (!key.startsWith(ROOM_PREFIX)) continue;
     const state = JSON.parse(json) as ServerGameState;
     rooms.push(stateToLobbyRoom(state));
   }

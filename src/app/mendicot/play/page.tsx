@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Lobby from "@/components/Lobby";
@@ -8,46 +8,115 @@ import GameBoard from "@/components/GameBoard";
 import { connectSocket, disconnectSocket, type GameSocket } from "@/lib/socket";
 import type { ClientGameState, Card } from "@/types/game";
 
+const MENDICOT_SESSION_KEY = "ethnogames_mendicot_session";
+
 export default function PlayPage() {
   const [socket, setSocket] = useState<GameSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const [gameState, setGameState] = useState<ClientGameState | null>(null);
   const [hand, setHand] = useState<Card[]>([]);
   const [inGame, setInGame] = useState(false);
-  const socketRef = useRef<GameSocket | null>(null);
+  const pendingRejoin = useRef(false);
 
   useEffect(() => {
     const s = connectSocket();
-    socketRef.current = s;
-    setSocket(s);
 
-    s.on("connect", () => setConnected(true));
-    s.on("disconnect", () => setConnected(false));
+    const tryRejoin = () => {
+      try {
+        const raw = window.sessionStorage.getItem(MENDICOT_SESSION_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as { roomId?: string; playerId?: string };
+        if (parsed.roomId && parsed.playerId) {
+          pendingRejoin.current = true;
+          s.emit(
+            "rejoin_room",
+            String(parsed.roomId).trim().toUpperCase(),
+            parsed.playerId
+          );
+        }
+      } catch {
+        /* ignore corrupt session */
+      }
+    };
 
-    s.on("game_state", (state, playerHand) => {
+    const onConnect = () => {
+      setConnected(true);
+      tryRejoin();
+    };
+    const onDisconnect = () => setConnected(false);
+
+    const onGameState = (state: ClientGameState, playerHand: Card[]) => {
+      pendingRejoin.current = false;
       setGameState(state);
       setHand(playerHand);
+      try {
+        const id = state.players[state.myIndex]?.id;
+        if (id && state.roomId) {
+          window.sessionStorage.setItem(
+            MENDICOT_SESSION_KEY,
+            JSON.stringify({ roomId: state.roomId, playerId: id })
+          );
+        }
+      } catch {
+        /* ignore */
+      }
       if (state.phase !== "waiting") {
         setInGame(true);
+      }
+    };
+
+    const onRoomJoined = (roomId: string, _playerIndex: number, playerId: string) => {
+      pendingRejoin.current = false;
+      try {
+        window.sessionStorage.setItem(
+          MENDICOT_SESSION_KEY,
+          JSON.stringify({ roomId, playerId })
+        );
+      } catch {
+        /* ignore */
+      }
+    };
+
+    const onError = (msg: string) => {
+      if (
+        pendingRejoin.current &&
+        (msg === "Room not found" ||
+          msg === "Player not found in room" ||
+          msg === "Invalid rejoin" ||
+          msg.includes("not found"))
+      ) {
+        try {
+          window.sessionStorage.removeItem(MENDICOT_SESSION_KEY);
+        } catch {
+          /* ignore */
+        }
+        pendingRejoin.current = false;
+      }
+    };
+
+    s.on("connect", onConnect);
+    s.on("disconnect", onDisconnect);
+    s.on("game_state", onGameState);
+    s.on("room_joined", onRoomJoined);
+    s.on("error", onError);
+
+    queueMicrotask(() => {
+      setSocket(s);
+      if (s.connected) {
+        setConnected(true);
+        tryRejoin();
       }
     });
 
     return () => {
-      s.off("connect");
-      s.off("disconnect");
-      s.off("game_state");
+      s.off("connect", onConnect);
+      s.off("disconnect", onDisconnect);
+      s.off("game_state", onGameState);
+      s.off("room_joined", onRoomJoined);
+      s.off("error", onError);
       disconnectSocket();
     };
   }, []);
-
-  const handleGameStart = useCallback(
-    (state: ClientGameState, playerHand: Card[]) => {
-      setGameState(state);
-      setHand(playerHand);
-      setInGame(true);
-    },
-    []
-  );
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -89,18 +158,22 @@ export default function PlayPage() {
           {connected && !inGame && socket && (
             <motion.div
               key="lobby"
+              className="pb-[max(1rem,env(safe-area-inset-bottom))]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <Lobby socket={socket} onGameStart={handleGameStart} />
+              <Lobby
+                socket={socket}
+                waitingState={gameState?.phase === "waiting" ? gameState : null}
+              />
             </motion.div>
           )}
 
           {connected && inGame && socket && gameState && (
             <motion.div
               key="game"
-              className="flex-1 py-4"
+              className="flex-1 py-2 sm:py-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

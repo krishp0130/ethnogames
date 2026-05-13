@@ -50,7 +50,7 @@ export default function MendicotPage() {
       <Navbar />
 
       {/* Hero */}
-      <section className="relative px-6 pt-20 pb-16 overflow-hidden">
+      <section className="relative px-4 sm:px-6 pt-16 sm:pt-20 pb-12 sm:pb-16 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.08),transparent_60%)]" />
 
         <div className="relative z-10 max-w-4xl mx-auto">
@@ -64,16 +64,16 @@ export default function MendicotPage() {
                 From India
               </span>
             </div>
-            <h1 className="text-5xl sm:text-6xl font-black tracking-tight mb-4">
+            <h1 className="text-4xl sm:text-6xl font-black tracking-tight mb-4">
               Mendicot
             </h1>
-            <p className="text-xl text-zinc-400 max-w-2xl mx-auto mb-8">
+            <p className="text-base sm:text-xl text-zinc-400 max-w-2xl mx-auto mb-8 px-1">
               A beloved Indian trick-taking card game where capturing Tens is
               everything. Set the trump on the fly, form partnerships, and
               outsmart your opponents.
             </p>
 
-            <div className="flex items-center justify-center gap-6 text-sm text-zinc-500 mb-10">
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-zinc-500 mb-10 px-2">
               <span className="flex items-center gap-1.5">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -95,7 +95,7 @@ export default function MendicotPage() {
             </div>
 
             {/* Animated example cards */}
-            <div className="flex items-center justify-center gap-3 mb-12">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-12 px-1">
               {CARD_EXAMPLES.map((c, i) => (
                 <motion.div
                   key={i}
@@ -115,7 +115,7 @@ export default function MendicotPage() {
 
             <Link
               href="/mendicot/play"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-lg rounded-2xl shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="inline-flex items-center justify-center gap-2 min-h-[48px] px-6 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-base sm:text-lg rounded-2xl shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               Play Mendicot
               <span className="text-xl">→</span>
@@ -125,7 +125,7 @@ export default function MendicotPage() {
       </section>
 
       {/* Rules */}
-      <section className="px-6 py-20 border-t border-white/[0.06]">
+      <section className="px-4 sm:px-6 py-16 sm:py-20 border-t border-white/[0.06]">
         <div className="max-w-3xl mx-auto">
           <motion.h2
             className="text-3xl font-bold text-center mb-4"
@@ -148,7 +148,7 @@ export default function MendicotPage() {
             {RULES.map((rule, i) => (
               <motion.div
                 key={i}
-                className="flex gap-5"
+                className="flex flex-col sm:flex-row gap-3 sm:gap-5"
                 initial={{ opacity: 0, x: -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
@@ -170,7 +170,7 @@ export default function MendicotPage() {
       </section>
 
       {/* Key Concepts */}
-      <section className="px-6 py-20 border-t border-white/[0.06]">
+      <section className="px-4 sm:px-6 py-16 sm:py-20 border-t border-white/[0.06]">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">
             Key Concepts
@@ -197,7 +197,7 @@ export default function MendicotPage() {
       </section>
 
       {/* CTA */}
-      <section className="px-6 py-20 border-t border-white/[0.06]">
+      <section className="px-4 sm:px-6 py-16 sm:py-20 border-t border-white/[0.06]">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to play?</h2>
           <p className="text-zinc-400 mb-8">
@@ -205,7 +205,7 @@ export default function MendicotPage() {
           </p>
           <Link
             href="/mendicot/play"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-2xl shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all hover:scale-[1.02]"
+            className="inline-flex items-center justify-center gap-2 min-h-[48px] px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-2xl shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all hover:scale-[1.02]"
           >
             Play Now →
           </Link>
