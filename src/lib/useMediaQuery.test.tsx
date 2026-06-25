@@ -67,10 +67,6 @@ describe("useViewportWidth", () => {
       writable: true,
       value: 1024,
     });
-    window.visualViewport = {
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    } as unknown as VisualViewport;
   });
 
   afterEach(() => {

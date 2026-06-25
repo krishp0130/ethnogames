@@ -147,7 +147,8 @@ export default memo(function PlayerHand({
                     <PlayingCard
                       card={card}
                       size={myCardSize}
-                      layoutId={`hand-${card.id}`}
+                      layoutId={compact ? undefined : `hand-${card.id}`}
+                      animate={!compact}
                       onClick={isValid ? () => onCardClick(card.id) : undefined}
                       disabled={isCurrentTurn && !isValid}
                       highlighted={isValid && isCurrentTurn}

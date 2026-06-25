@@ -69,28 +69,40 @@ export default function TrickArea({
                 marginLeft: -layout.cardW / 2,
                 marginTop: -layout.cardH / 2,
               }}
-              initial={{
-                x: entry.x,
-                y: entry.y,
-                opacity: 0,
-                scale: 0.6,
-              }}
+              initial={
+                isCompact
+                  ? false
+                  : {
+                      x: entry.x,
+                      y: entry.y,
+                      opacity: 0,
+                      scale: 0.6,
+                    }
+              }
               animate={{
                 x: pos.x,
                 y: pos.y,
                 opacity: 1,
                 scale: 1,
               }}
-              exit={{
-                opacity: 0,
-                scale: 0.6,
-                transition: { duration: 0.18 },
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 260,
-                damping: 26,
-              }}
+              exit={
+                isCompact
+                  ? { opacity: 0, transition: { duration: 0.12 } }
+                  : {
+                      opacity: 0,
+                      scale: 0.6,
+                      transition: { duration: 0.18 },
+                    }
+              }
+              transition={
+                isCompact
+                  ? { duration: 0.2, ease: "easeOut" }
+                  : {
+                      type: "spring",
+                      stiffness: 260,
+                      damping: 26,
+                    }
+              }
             >
               <PlayingCard card={tc.card} size={size} animate={false} />
             </motion.div>

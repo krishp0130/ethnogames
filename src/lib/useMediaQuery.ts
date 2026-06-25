@@ -34,10 +34,10 @@ export function useViewportWidth(): number {
     (onChange) => {
       const handler = () => onChange();
       window.addEventListener("resize", handler, { passive: true });
-      window.visualViewport?.addEventListener("resize", handler);
+      window.addEventListener("orientationchange", handler, { passive: true });
       return () => {
         window.removeEventListener("resize", handler);
-        window.visualViewport?.removeEventListener("resize", handler);
+        window.removeEventListener("orientationchange", handler);
       };
     },
     () => window.innerWidth,

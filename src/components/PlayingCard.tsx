@@ -108,6 +108,53 @@ export default memo(function PlayingCard({
     );
   }
 
+  const faceUpClassName = `
+    ${cfg.card}
+    bg-white
+    border-2 shadow-lg
+    flex flex-col items-center justify-between
+    ${cfg.padding} select-none
+    transition-[border-color,box-shadow,transform] duration-150
+    ${colorClass}
+    ${highlighted
+      ? "border-amber-400 shadow-amber-400/30 shadow-xl ring-2 ring-amber-400/20 -translate-y-2"
+      : "border-gray-200"
+    }
+    ${disabled
+      ? "opacity-30 cursor-not-allowed"
+      : onClick
+      ? "cursor-pointer hover:border-blue-400 hover:shadow-blue-400/20 hover:shadow-xl active:scale-[0.97] interactive-focus"
+      : ""
+    }
+    ${className}
+  `;
+
+  if (!animate) {
+    return (
+      <button
+        type="button"
+        onClick={disabled ? undefined : onClick}
+        disabled={disabled && !onClick}
+        aria-label={
+          onClick && !disabled
+            ? `Play ${card.rank} of ${card.suit}`
+            : `${card.rank} of ${card.suit}`
+        }
+        className={faceUpClassName}
+      >
+        <div className="self-start leading-none font-bold">
+          <div className={cfg.rankText}>{card.rank}</div>
+          <div className={cfg.suitCorner}>{symbol}</div>
+        </div>
+        <div className={cfg.suitCenter}>{symbol}</div>
+        <div className="self-end leading-none font-bold rotate-180">
+          <div className={cfg.rankText}>{card.rank}</div>
+          <div className={cfg.suitCorner}>{symbol}</div>
+        </div>
+      </button>
+    );
+  }
+
   return (
     <motion.button
       type="button"
@@ -139,7 +186,7 @@ export default memo(function PlayingCard({
         }
         ${className}
       `}
-      initial={{ scale: 0.8, opacity: 0 }}
+      initial={false}
       animate={{
         scale: 1,
         opacity: 1,

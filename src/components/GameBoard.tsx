@@ -247,14 +247,9 @@ export default function GameBoard({ socket, state, hand }: GameBoardProps) {
         ) : null}
 
         {/* Status bar */}
-        <motion.div
-          className="text-center text-zinc-300 text-xs sm:text-sm bg-white/[0.04] px-3 sm:px-5 py-2.5 rounded-xl border border-white/[0.06] max-w-full mx-1"
-          key={state.message}
-          initial={{ opacity: 0, y: 5 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <div className="text-center text-zinc-300 text-xs sm:text-sm bg-white/[0.04] px-3 sm:px-5 py-2.5 rounded-xl border border-white/[0.06] max-w-full mx-1">
           {state.message}
-        </motion.div>
+        </div>
       </div>
     </div>
   );

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { AnimatePresence, motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import { connectSocket, disconnectSocket, type GameSocket } from "@/lib/socket";
 import { shouldClearSessionOnRejoinError } from "@/lib/rejoin";
@@ -38,6 +37,9 @@ export default function PlayPage() {
   const pendingRejoin = useRef(false);
 
   const inGame = gameState !== null && gameState.phase !== "waiting";
+  const showConnectingScreen = !connected && gameState === null;
+  const isReconnecting = !connected && gameState !== null;
+  const canShowApp = connected || gameState !== null;
 
   useEffect(() => {
     const s = connectSocket();
@@ -127,65 +129,53 @@ export default function PlayPage() {
             inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium
             ${connected
               ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+              : isReconnecting
+              ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
               : "bg-red-500/10 text-red-400 border border-red-500/20"
             }
           `}
         >
           <span
-            className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-emerald-400" : "bg-red-400 animate-pulse"}`}
+            className={`w-1.5 h-1.5 rounded-full ${
+              connected
+                ? "bg-emerald-400"
+                : isReconnecting
+                ? "bg-amber-400 animate-pulse"
+                : "bg-red-400 animate-pulse"
+            }`}
             aria-hidden="true"
           />
-          {connected ? "Connected" : "Connecting…"}
+          {connected ? "Connected" : isReconnecting ? "Reconnecting…" : "Connecting…"}
         </div>
       </div>
 
       <main id="main-content" className="flex-1 flex flex-col min-h-0">
-        <AnimatePresence mode="wait">
-          {!connected ? (
-            <motion.div
-              key="connecting"
-              className="flex-1 flex items-center justify-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <div className="text-center px-6 max-w-sm">
-                <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-zinc-400">Connecting to game server…</p>
-                {connectionError ? (
-                  <p className="text-red-400 text-sm mt-3">{connectionError}</p>
-                ) : null}
-              </div>
-            </motion.div>
-          ) : null}
+        {showConnectingScreen ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center px-6 max-w-sm">
+              <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-zinc-400">Connecting to game server…</p>
+              {connectionError ? (
+                <p className="text-red-400 text-sm mt-3">{connectionError}</p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
-          {connected && !inGame && socket ? (
-            <motion.div
-              key="lobby"
-              className="pb-[max(1rem,env(safe-area-inset-bottom))]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <Lobby
-                socket={socket}
-                waitingState={gameState?.phase === "waiting" ? gameState : null}
-              />
-            </motion.div>
-          ) : null}
+        {canShowApp && !inGame && socket ? (
+          <div className="pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <Lobby
+              socket={socket}
+              waitingState={gameState?.phase === "waiting" ? gameState : null}
+            />
+          </div>
+        ) : null}
 
-          {connected && inGame && socket && gameState ? (
-            <motion.div
-              key="game"
-              className="flex-1 min-h-0 flex flex-col py-1 sm:py-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] overflow-y-auto play-surface"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <GameBoard socket={socket} state={gameState} hand={hand} />
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+        {canShowApp && inGame && socket && gameState ? (
+          <div className="flex-1 min-h-0 flex flex-col py-1 sm:py-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] overflow-y-auto play-surface">
+            <GameBoard socket={socket} state={gameState} hand={hand} />
+          </div>
+        ) : null}
       </main>
     </div>
   );
