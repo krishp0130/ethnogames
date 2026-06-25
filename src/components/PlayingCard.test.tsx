@@ -9,8 +9,17 @@ describe("PlayingCard", () => {
     render(<PlayingCard card={card("c1", "K", "hearts")} animate={false} />);
 
     expect(screen.getByLabelText("K of hearts")).toBeInTheDocument();
-    expect(screen.getAllByText("K")).toHaveLength(2);
+    expect(screen.getAllByText("K").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("♥").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("fits two-digit ranks on compact cards", () => {
+    render(
+      <PlayingCard card={card("c1", "10", "hearts")} size="sm" animate={false} />
+    );
+
+    expect(screen.getByLabelText("10 of hearts")).toBeInTheDocument();
+    expect(screen.getByText("10")).toBeInTheDocument();
   });
 
   it("calls onClick when playable", async () => {

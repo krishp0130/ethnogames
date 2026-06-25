@@ -7,37 +7,44 @@ import type { CardSize } from "@/lib/trickLayout";
 
 export type { CardSize };
 
-const SIZE_CONFIG: Record<CardSize, {
+type SizeConfig = {
   card: string;
   padding: string;
   rankText: string;
   suitCorner: string;
   suitCenter: string;
   backInner: string;
-}> = {
+  /** Bottom inverted corner — omitted on the smallest size to save space */
+  showBottomCorner: boolean;
+};
+
+const SIZE_CONFIG: Record<CardSize, SizeConfig> = {
   sm: {
-    card: "w-10 h-14 rounded-md",
-    padding: "px-1 py-0.5",
-    rankText: "text-[9px]",
-    suitCorner: "text-[8px]",
-    suitCenter: "text-base",
-    backInner: "w-6 h-9",
+    card: "w-11 h-[3.75rem] rounded-md",
+    padding: "p-0.5",
+    rankText: "text-[9px] leading-none tabular-nums",
+    suitCorner: "text-[8px] leading-none",
+    suitCenter: "text-sm leading-none",
+    backInner: "w-7 h-10",
+    showBottomCorner: false,
   },
   md: {
-    card: "w-14 h-20 rounded-lg",
-    padding: "px-1.5 py-1",
-    rankText: "text-xs",
-    suitCorner: "text-[10px]",
-    suitCenter: "text-2xl",
-    backInner: "w-9 h-14",
+    card: "w-14 h-[4.5rem] rounded-lg",
+    padding: "p-1",
+    rankText: "text-[10px] leading-none tabular-nums",
+    suitCorner: "text-[9px] leading-none",
+    suitCenter: "text-lg leading-none",
+    backInner: "w-9 h-12",
+    showBottomCorner: true,
   },
   lg: {
     card: "w-[4.5rem] h-[6.5rem] rounded-xl",
     padding: "px-2 py-1.5",
-    rankText: "text-sm",
-    suitCorner: "text-[11px]",
-    suitCenter: "text-3xl",
+    rankText: "text-sm leading-none tabular-nums",
+    suitCorner: "text-[11px] leading-none",
+    suitCenter: "text-3xl leading-none",
     backInner: "w-12 h-18",
+    showBottomCorner: true,
   },
 };
 
@@ -53,6 +60,37 @@ interface PlayingCardProps {
   animate?: boolean;
   /** Parent handles hover lift in fanned hands — avoids conflicting transforms with Framer */
   suppressWhileHover?: boolean;
+}
+
+function CardFace({
+  card,
+  cfg,
+  symbol,
+}: {
+  card: Card;
+  cfg: SizeConfig;
+  symbol: string;
+}) {
+  return (
+    <>
+      <div className="self-start leading-none font-bold shrink-0">
+        <div className={cfg.rankText}>{card.rank}</div>
+        <div className={cfg.suitCorner}>{symbol}</div>
+      </div>
+      <div
+        className={`${cfg.suitCenter} flex flex-1 items-center justify-center min-h-0 w-full`}
+        aria-hidden="true"
+      >
+        {symbol}
+      </div>
+      {cfg.showBottomCorner ? (
+        <div className="self-end leading-none font-bold rotate-180 shrink-0">
+          <div className={cfg.rankText}>{card.rank}</div>
+          <div className={cfg.suitCorner}>{symbol}</div>
+        </div>
+      ) : null}
+    </>
+  );
 }
 
 export default memo(function PlayingCard({
@@ -92,7 +130,7 @@ export default memo(function PlayingCard({
           border border-indigo-400/20
           shadow-lg
           flex items-center justify-center
-          select-none
+          select-none overflow-hidden
           ${className}
         `}
         {...motionProps}
@@ -112,8 +150,8 @@ export default memo(function PlayingCard({
     ${cfg.card}
     bg-white
     border-2 shadow-lg
-    flex flex-col items-center justify-between
-    ${cfg.padding} select-none
+    flex flex-col items-stretch justify-between
+    ${cfg.padding} select-none overflow-hidden shrink-0
     transition-[border-color,box-shadow,transform] duration-150
     ${colorClass}
     ${highlighted
@@ -142,15 +180,7 @@ export default memo(function PlayingCard({
         }
         className={faceUpClassName}
       >
-        <div className="self-start leading-none font-bold">
-          <div className={cfg.rankText}>{card.rank}</div>
-          <div className={cfg.suitCorner}>{symbol}</div>
-        </div>
-        <div className={cfg.suitCenter}>{symbol}</div>
-        <div className="self-end leading-none font-bold rotate-180">
-          <div className={cfg.rankText}>{card.rank}</div>
-          <div className={cfg.suitCorner}>{symbol}</div>
-        </div>
+        <CardFace card={card} cfg={cfg} symbol={symbol} />
       </button>
     );
   }
@@ -170,8 +200,8 @@ export default memo(function PlayingCard({
         ${cfg.card}
         bg-white
         border-2 shadow-lg
-        flex flex-col items-center justify-between
-        ${cfg.padding} select-none
+        flex flex-col items-stretch justify-between
+        ${cfg.padding} select-none overflow-hidden shrink-0
         transition-colors duration-100
         ${colorClass}
         ${highlighted
@@ -201,15 +231,7 @@ export default memo(function PlayingCard({
       }
       whileTap={suppressWhileHover || !onClick || disabled ? undefined : { scale: 0.95 }}
     >
-      <div className="self-start leading-none font-bold">
-        <div className={cfg.rankText}>{card.rank}</div>
-        <div className={cfg.suitCorner}>{symbol}</div>
-      </div>
-      <div className={cfg.suitCenter}>{symbol}</div>
-      <div className="self-end leading-none font-bold rotate-180">
-        <div className={cfg.rankText}>{card.rank}</div>
-        <div className={cfg.suitCorner}>{symbol}</div>
-      </div>
+      <CardFace card={card} cfg={cfg} symbol={symbol} />
     </motion.button>
   );
 });

@@ -39,7 +39,7 @@ export default memo(function PlayerHand({
 
   const isVeryNarrow = compact && viewportWidth > 0 && viewportWidth < 380;
   const myCardSize: CardSize = isVeryNarrow ? "sm" : compact ? "md" : "lg";
-  const myCardWidth = isVeryNarrow ? 40 : compact ? 56 : 72;
+  const myCardWidth = isVeryNarrow ? 44 : compact ? 56 : 72;
   const availableForFan =
     docked && viewportWidth > 0
       ? viewportWidth - 20
