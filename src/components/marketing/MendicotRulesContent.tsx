@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
+import { MotionDiv, MotionH2, MotionP } from "@/lib/motion";
+import { useMotionEnabled } from "@/lib/useMediaQuery";
 
 const RULES = [
   {
@@ -45,6 +46,8 @@ const CARD_EXAMPLES = [
 ];
 
 export default function MendicotRulesContent() {
+  const motionEnabled = useMotionEnabled();
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -54,7 +57,7 @@ export default function MendicotRulesContent() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.08),transparent_60%)]" />
 
         <div className="relative z-10 max-w-4xl mx-auto">
-          <motion.div
+          <MotionDiv
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center"
@@ -94,23 +97,43 @@ export default function MendicotRulesContent() {
               </span>
             </div>
 
-            {/* Animated example cards */}
             <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-12 px-1">
-              {CARD_EXAMPLES.map((c, i) => (
-                <motion.div
-                  key={i}
-                  className="w-16 h-24 bg-white rounded-xl shadow-2xl flex flex-col items-center justify-center border border-zinc-200"
-                  initial={{ opacity: 0, y: 40, rotate: (i - 1.5) * 8 }}
-                  animate={{ opacity: 1, y: 0, rotate: (i - 1.5) * 8 }}
-                  transition={{ delay: 0.2 + i * 0.1, type: "spring", stiffness: 200 }}
-                  whileHover={{ y: -8, scale: 1.05, rotate: 0, zIndex: 10 }}
-                >
-                  <span className={`text-xs font-bold ${c.color}`}>
-                    {c.rank}
-                  </span>
-                  <span className={`text-2xl ${c.color}`}>{c.suit}</span>
-                </motion.div>
-              ))}
+              {CARD_EXAMPLES.map((c, i) => {
+                const rotate = (i - 1.5) * 8;
+                const cardInner = (
+                  <>
+                    <span className={`text-xs font-bold ${c.color}`}>
+                      {c.rank}
+                    </span>
+                    <span className={`text-2xl ${c.color}`}>{c.suit}</span>
+                  </>
+                );
+
+                if (!motionEnabled) {
+                  return (
+                    <div
+                      key={i}
+                      className="w-16 h-24 bg-white rounded-xl shadow-2xl flex flex-col items-center justify-center border border-zinc-200"
+                      style={{ transform: `rotate(${rotate}deg)` }}
+                    >
+                      {cardInner}
+                    </div>
+                  );
+                }
+
+                return (
+                  <MotionDiv
+                    key={i}
+                    className="w-16 h-24 bg-white rounded-xl shadow-2xl flex flex-col items-center justify-center border border-zinc-200"
+                    initial={{ opacity: 0, y: 40, rotate: rotate - 8 }}
+                    animate={{ opacity: 1, y: 0, rotate }}
+                    transition={{ delay: 0.2 + i * 0.1, type: "spring", stiffness: 200 }}
+                    whileHover={{ y: -8, scale: 1.05, rotate: 0, zIndex: 10 }}
+                  >
+                    {cardInner}
+                  </MotionDiv>
+                );
+              })}
             </div>
 
             <Link
@@ -120,33 +143,32 @@ export default function MendicotRulesContent() {
               Play Mendicot
               <span className="text-xl">→</span>
             </Link>
-          </motion.div>
+          </MotionDiv>
         </div>
       </section>
 
-      {/* Rules */}
       <section className="px-4 sm:px-6 py-16 sm:py-20 border-t border-white/[0.06]">
         <div className="max-w-3xl mx-auto">
-          <motion.h2
+          <MotionH2
             className="text-3xl font-bold text-center mb-4"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
           >
             How to Play
-          </motion.h2>
-          <motion.p
+          </MotionH2>
+          <MotionP
             className="text-zinc-400 text-center mb-12"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
           >
             Learn the rules in 2 minutes
-          </motion.p>
+          </MotionP>
 
           <div className="space-y-6">
             {RULES.map((rule, i) => (
-              <motion.div
+              <MotionDiv
                 key={i}
                 className="flex flex-col sm:flex-row gap-3 sm:gap-5"
                 initial={{ opacity: 0, x: -20 }}
@@ -163,13 +185,12 @@ export default function MendicotRulesContent() {
                     {rule.content}
                   </p>
                 </div>
-              </motion.div>
+              </MotionDiv>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Key Concepts */}
       <section className="px-4 sm:px-6 py-16 sm:py-20 border-t border-white/[0.06]">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">
@@ -196,7 +217,6 @@ export default function MendicotRulesContent() {
         </div>
       </section>
 
-      {/* CTA */}
       <section className="px-4 sm:px-6 py-16 sm:py-20 border-t border-white/[0.06]">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to play?</h2>
@@ -226,7 +246,7 @@ function ConceptCard({
   icon: string;
 }) {
   return (
-    <motion.div
+    <MotionDiv
       className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] transition-all"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -235,6 +255,6 @@ function ConceptCard({
       <div className="text-3xl mb-3">{icon}</div>
       <h3 className="font-semibold text-lg mb-2">{title}</h3>
       <p className="text-zinc-400 text-sm leading-relaxed">{description}</p>
-    </motion.div>
+    </MotionDiv>
   );
 }

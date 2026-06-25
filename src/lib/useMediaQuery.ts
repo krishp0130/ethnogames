@@ -28,6 +28,13 @@ export function useMediaQuery(query: string): boolean {
   );
 }
 
+/** Disable decorative motion on phones — avoids iOS URL-bar viewport flicker. */
+export function useMotionEnabled(): boolean {
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const compact = useMediaQuery("(max-width: 639.98px)");
+  return !reducedMotion && !compact;
+}
+
 /** Viewport inner width in CSS pixels; 0 during SSR. */
 export function useViewportWidth(): number {
   return useSyncExternalStore(

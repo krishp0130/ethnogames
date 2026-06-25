@@ -3,7 +3,7 @@
  */
 import { renderHook, act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useMediaQuery, useViewportWidth } from "./useMediaQuery";
+import { useMediaQuery, useMotionEnabled, useViewportWidth } from "./useMediaQuery";
 
 function mockMatchMedia(initialMatches: boolean) {
   let matches = initialMatches;
@@ -85,5 +85,27 @@ describe("useViewportWidth", () => {
       window.dispatchEvent(new Event("resize"));
     });
     expect(result.current).toBe(375);
+  });
+});
+
+describe("useMotionEnabled", () => {
+  beforeEach(() => {
+    mockMatchMedia(false);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("is disabled on compact viewports", () => {
+    mockMatchMedia(true);
+    const { result } = renderHook(() => useMotionEnabled());
+    expect(result.current).toBe(false);
+  });
+
+  it("is enabled on desktop viewports", () => {
+    mockMatchMedia(false);
+    const { result } = renderHook(() => useMotionEnabled());
+    expect(result.current).toBe(true);
   });
 });

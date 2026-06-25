@@ -11,7 +11,7 @@ export default function Navbar() {
 
   return (
     <nav
-      className="w-full border-b border-white/[0.06] bg-black/60 backdrop-blur-xl sticky top-0 z-50 pt-[env(safe-area-inset-top,0px)]"
+      className="w-full border-b border-white/[0.06] bg-zinc-950/95 sm:bg-black/60 sm:backdrop-blur-xl sticky top-0 z-50 pt-[env(safe-area-inset-top,0px)]"
       aria-label="Main"
     >
       <div className="max-w-6xl mx-auto px-3 sm:px-6 min-h-14 sm:h-16 flex flex-wrap sm:flex-nowrap items-center justify-between gap-y-2 gap-x-2 py-2 sm:py-0">

@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
+import { MotionDiv, MotionH1, MotionP } from "@/lib/motion";
+import { useMotionEnabled } from "@/lib/useMediaQuery";
 
 const FLOATING_CARDS = [
   { suit: "♠", rank: "A", x: "10%", y: "20%", rotate: -15, delay: 0 },
@@ -14,70 +15,73 @@ const FLOATING_CARDS = [
 ];
 
 export default function HomePageContent() {
+  const motionEnabled = useMotionEnabled();
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
       <main id="main-content">
       <section className="relative flex-1 flex items-center justify-center overflow-hidden px-4 sm:px-6 py-16 sm:py-24">
-        {/* Hero Section */}
-        {/* Animated background */}
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(251,191,36,0.08),transparent_50%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(239,68,68,0.06),transparent_50%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(139,92,246,0.06),transparent_50%)]" />
         </div>
 
-        {/* Floating cards background */}
-        {FLOATING_CARDS.map((c, i) => (
-          <motion.div
-            key={i}
-            className="absolute pointer-events-none select-none"
-            style={{ left: c.x, top: c.y }}
-            initial={{ opacity: 0, scale: 0.5, rotate: c.rotate - 20 }}
-            animate={{
-              opacity: 0.32,
-              scale: 1,
-              rotate: c.rotate,
-              y: [0, -12, 0],
-            }}
-            transition={{
-              opacity: { delay: c.delay, duration: 1 },
-              scale: { delay: c.delay, duration: 1 },
-              rotate: { delay: c.delay, duration: 1 },
-              y: { duration: 4, repeat: Infinity, ease: "easeInOut", delay: c.delay },
-            }}
-          >
-            <div className="w-20 h-28 rounded-xl border border-white/25 bg-white/95 shadow-2xl shadow-black/40 flex flex-col items-center justify-center gap-0.5 backdrop-blur-sm">
-              <span className="text-[10px] font-bold leading-none text-zinc-500">
-                {c.rank}
-              </span>
-              <span
-                className={
-                  c.suit === "♥" || c.suit === "♦"
-                    ? "text-4xl font-bold leading-none text-red-600"
-                    : "text-4xl font-bold leading-none text-zinc-950 drop-shadow-[0_1px_0_rgba(255,255,255,0.5)]"
-                }
+        {motionEnabled
+          ? FLOATING_CARDS.map((c, i) => (
+              <MotionDiv
+                key={i}
+                className="absolute pointer-events-none select-none"
+                style={{ left: c.x, top: c.y }}
+                initial={{ opacity: 0, scale: 0.5, rotate: c.rotate - 20 }}
+                animate={{
+                  opacity: 0.32,
+                  scale: 1,
+                  rotate: c.rotate,
+                  y: [0, -12, 0],
+                }}
+                transition={{
+                  opacity: { delay: c.delay, duration: 1 },
+                  scale: { delay: c.delay, duration: 1 },
+                  rotate: { delay: c.delay, duration: 1 },
+                  y: { duration: 4, repeat: Infinity, ease: "easeInOut", delay: c.delay },
+                }}
               >
-                {c.suit}
-              </span>
-            </div>
-          </motion.div>
-        ))}
+                <div className="w-20 h-28 rounded-xl border border-white/25 bg-white/95 shadow-2xl shadow-black/40 flex flex-col items-center justify-center gap-0.5 backdrop-blur-sm">
+                  <span className="text-[10px] font-bold leading-none text-zinc-500">
+                    {c.rank}
+                  </span>
+                  <span
+                    className={
+                      c.suit === "♥" || c.suit === "♦"
+                        ? "text-4xl font-bold leading-none text-red-600"
+                        : "text-4xl font-bold leading-none text-zinc-950 drop-shadow-[0_1px_0_rgba(255,255,255,0.5)]"
+                    }
+                  >
+                    {c.suit}
+                  </span>
+                </div>
+              </MotionDiv>
+            ))
+          : null}
 
         <div className="relative z-10 max-w-4xl mx-auto text-center">
-          <motion.div
+          <MotionDiv
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
             <div className="inline-flex items-center gap-2 bg-white/[0.06] border border-white/[0.08] rounded-full px-4 py-1.5 mb-8">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+              <div
+                className={`w-2 h-2 bg-emerald-400 rounded-full ${motionEnabled ? "animate-pulse" : ""}`}
+              />
               <span className="text-sm text-zinc-400">Now live — Mendicot</span>
             </div>
-          </motion.div>
+          </MotionDiv>
 
-          <motion.h1
+          <MotionH1
             className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight leading-[1.1] mb-6"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -85,9 +89,9 @@ export default function HomePageContent() {
           >
             Play the card games{" "}
             <span className="text-gradient">you grew up with</span>
-          </motion.h1>
+          </MotionH1>
 
-          <motion.p
+          <MotionP
             className="text-lg sm:text-xl text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -96,9 +100,9 @@ export default function HomePageContent() {
             Traditional card games from around the world, brought online.
             Create a room, invite your friends and family, and play together
             in real time — no downloads, no sign-ups.
-          </motion.p>
+          </MotionP>
 
-          <motion.div
+          <MotionDiv
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -119,14 +123,13 @@ export default function HomePageContent() {
             >
               Learn Mendicot
             </Link>
-          </motion.div>
+          </MotionDiv>
         </div>
       </section>
 
-      {/* Features Section */}
       <section className="relative px-4 sm:px-6 py-16 sm:py-24 border-t border-white/[0.06]">
         <div className="max-w-6xl mx-auto">
-          <motion.div
+          <MotionDiv
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -139,7 +142,7 @@ export default function HomePageContent() {
               Real-time multiplayer, beautiful animations, and faithful rules
               — everything you need for game night.
             </p>
-          </motion.div>
+          </MotionDiv>
 
           <div className="grid md:grid-cols-3 gap-6">
             <FeatureCard
@@ -164,10 +167,9 @@ export default function HomePageContent() {
         </div>
       </section>
 
-      {/* Game Showcase */}
       <section className="relative px-4 sm:px-6 py-16 sm:py-24 border-t border-white/[0.06]">
         <div className="max-w-6xl mx-auto">
-          <motion.div
+          <MotionDiv
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -177,7 +179,7 @@ export default function HomePageContent() {
             <p className="text-zinc-400 text-lg">
               Starting with classics. More coming soon.
             </p>
-          </motion.div>
+          </MotionDiv>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             <GameCard
@@ -208,7 +210,6 @@ export default function HomePageContent() {
 
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-white/[0.06] px-4 sm:px-6 py-8">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="flex items-center gap-2">
@@ -238,7 +239,7 @@ function FeatureCard({
   delay: number;
 }) {
   return (
-    <motion.div
+    <MotionDiv
       className="group p-6 rounded-2xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.05] transition-all"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -248,7 +249,7 @@ function FeatureCard({
       <div className="text-3xl mb-4">{icon}</div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <p className="text-zinc-400 text-sm leading-relaxed">{description}</p>
-    </motion.div>
+    </MotionDiv>
   );
 }
 
@@ -316,7 +317,7 @@ function GameCard({
   );
 
   return (
-    <motion.div
+    <MotionDiv
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
@@ -330,6 +331,6 @@ function GameCard({
           {inner}
         </div>
       )}
-    </motion.div>
+    </MotionDiv>
   );
 }

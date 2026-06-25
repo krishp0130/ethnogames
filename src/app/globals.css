@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #09090b;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -10,13 +10,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 html {
@@ -97,6 +90,13 @@ input[type="submit"],
   .card-touch-lift-side:active {
     transform: scale(1.08);
     z-index: 60;
+  }
+
+  .glow-active {
+    animation: none;
+    box-shadow:
+      0 0 0 1px rgba(251, 191, 36, 0.4),
+      0 0 16px rgba(251, 191, 36, 0.3);
   }
 }
 
