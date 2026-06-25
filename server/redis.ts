@@ -6,12 +6,44 @@ const ROOM_TTL = 3600; // 1 hour
 
 let redis: Redis | null = null;
 const fallbackStore = new Map<string, string>();
+/** In-memory when Redis is not configured, or after a connection failure. */
 let usingFallback = false;
+let loggedMemoryMode = false;
+let loggedRedisFailure = false;
+
+function isRedisConfigured(): boolean {
+  if (process.env.REDIS_URL?.trim()) return true;
+  if (process.env.REDIS_HOST?.trim()) return true;
+  if (process.env.REDIS_PORT?.trim()) return true;
+  return false;
+}
+
+function logMemoryModeOnce(): void {
+  if (loggedMemoryMode) return;
+  loggedMemoryMode = true;
+  console.log(
+    "[redis] Using in-memory store (set REDIS_URL to enable Redis persistence)"
+  );
+}
+
+function switchToFallback(reason: string): void {
+  usingFallback = true;
+  if (redis) {
+    redis.disconnect();
+    redis = null;
+  }
+  if (!loggedRedisFailure) {
+    loggedRedisFailure = true;
+    console.warn(`[redis] ${reason}`);
+  }
+}
 
 /** @internal Force in-memory storage (for unit tests without Redis). */
 export function resetRedisStorageForTests(): void {
   fallbackStore.clear();
   usingFallback = true;
+  loggedMemoryMode = false;
+  loggedRedisFailure = false;
   if (redis) {
     redis.disconnect();
     redis = null;
@@ -37,18 +69,22 @@ async function scanKeys(client: Redis, pattern: string): Promise<string[]> {
 
 function getRedis(): Redis | null {
   if (usingFallback) return null;
+  if (!isRedisConfigured()) {
+    logMemoryModeOnce();
+    return null;
+  }
   if (redis) return redis;
 
   try {
     const url = process.env.REDIS_URL?.trim();
     const common = {
       maxRetriesPerRequest: 1,
+      lazyConnect: true,
       retryStrategy(times: number) {
         if (times > 3) {
-          console.warn(
-            "[redis] Max retries reached, falling back to in-memory store"
+          switchToFallback(
+            "Max retries reached, falling back to in-memory store"
           );
-          usingFallback = true;
           return null;
         }
         return Math.min(times * 200, 2000);
@@ -65,20 +101,15 @@ function getRedis(): Redis | null {
 
     redis.on("error", (err) => {
       if (!usingFallback) {
-        console.warn(
-          "[redis] Connection error, using in-memory fallback:",
-          err.message
+        switchToFallback(
+          `Connection error, using in-memory fallback: ${err.message}`
         );
-        usingFallback = true;
-        redis?.disconnect();
-        redis = null;
       }
     });
 
     return redis;
   } catch {
-    console.warn("[redis] Failed to create client, using in-memory fallback");
-    usingFallback = true;
+    switchToFallback("Failed to create client, using in-memory fallback");
     return null;
   }
 }
@@ -96,7 +127,7 @@ export async function saveRoom(
       await client.set(key, json, "EX", ROOM_TTL);
       return;
     } catch {
-      console.warn("[redis] save failed, using fallback");
+      switchToFallback("save failed, using in-memory fallback");
     }
   }
 
@@ -114,7 +145,7 @@ export async function getRoom(
       const json = await client.get(key);
       return json ? (JSON.parse(json) as ServerGameState) : null;
     } catch {
-      console.warn("[redis] get failed, using fallback");
+      switchToFallback("get failed, using in-memory fallback");
     }
   }
 
@@ -131,7 +162,7 @@ export async function deleteRoom(roomId: string): Promise<void> {
       await client.del(key);
       return;
     } catch {
-      console.warn("[redis] delete failed, using fallback");
+      switchToFallback("delete failed, using in-memory fallback");
     }
   }
 
@@ -161,7 +192,7 @@ export async function listRooms(): Promise<LobbyRoom[]> {
       }
       return rooms;
     } catch {
-      console.warn("[redis] listRooms failed, using fallback");
+      switchToFallback("listRooms failed, using in-memory fallback");
     }
   }
 

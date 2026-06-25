@@ -76,6 +76,6 @@ describe("TrickArea", () => {
       />
     );
 
-    expect(container.firstChild).toHaveClass("w-64");
+    expect(container.firstChild).toHaveClass("w-36");
   });
 });

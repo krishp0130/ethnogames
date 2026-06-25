@@ -106,4 +106,27 @@ describe("PlayerHand", () => {
 
     expect(screen.getByTestId("player-hand-dock")).toBeInTheDocument();
   });
+
+  it("shows compact opponent pile with card count on mobile", () => {
+    render(
+      <PlayerHand
+        player={clientPlayer({
+          id: "p1",
+          name: "Bob",
+          seatIndex: 1,
+          cardCount: 8,
+        })}
+        hand={[]}
+        validCards={new Set()}
+        isCurrentTurn={false}
+        isMe={false}
+        onCardClick={vi.fn()}
+        position="right"
+        compact
+      />
+    );
+
+    expect(screen.getByText("Bob")).toBeInTheDocument();
+    expect(screen.getByText("8")).toBeInTheDocument();
+  });
 });

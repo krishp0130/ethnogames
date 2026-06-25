@@ -155,7 +155,7 @@ export default memo(function PlayingCard({
     transition-[border-color,box-shadow,transform] duration-150
     ${colorClass}
     ${highlighted
-      ? "border-amber-400 shadow-amber-400/30 shadow-xl ring-2 ring-amber-400/20 -translate-y-2"
+      ? `border-amber-400 shadow-amber-400/30 shadow-xl ring-2 ring-amber-400/20${size === "sm" ? "" : " -translate-y-2"}`
       : "border-gray-200"
     }
     ${disabled

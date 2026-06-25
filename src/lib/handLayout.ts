@@ -5,7 +5,8 @@ export function overlapForFan(
 ): number {
   if (count <= 1) return 0;
   const raw = (count * cardWidth - availablePx) / (count - 1);
-  return Math.min(58, Math.max(22, Math.ceil(raw)));
+  const minOverlap = cardWidth <= 44 ? 18 : 22;
+  return Math.min(58, Math.max(minOverlap, Math.ceil(raw)));
 }
 
 export function meCardHoverWrapClass(

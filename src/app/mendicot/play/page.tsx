@@ -119,34 +119,36 @@ export default function PlayPage() {
           : "min-h-dvh flex flex-col"
       }
     >
-      <Navbar />
+      <Navbar compact={inGame} />
 
-      <div className="flex justify-center pt-2">
-        <div
-          role="status"
-          aria-live="polite"
-          className={`
-            inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium
-            ${connected
-              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-              : isReconnecting
-              ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-              : "bg-red-500/10 text-red-400 border border-red-500/20"
-            }
-          `}
-        >
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${
-              connected
-                ? "bg-emerald-400"
+      <div className="flex justify-center pt-1 sm:pt-2">
+        {!inGame || !connected ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className={`
+              inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium
+              ${connected
+                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                 : isReconnecting
-                ? "bg-amber-400 animate-pulse"
-                : "bg-red-400 animate-pulse"
-            }`}
-            aria-hidden="true"
-          />
-          {connected ? "Connected" : isReconnecting ? "Reconnecting…" : "Connecting…"}
-        </div>
+                ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                : "bg-red-500/10 text-red-400 border border-red-500/20"
+              }
+            `}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                connected
+                  ? "bg-emerald-400"
+                  : isReconnecting
+                  ? "bg-amber-400 animate-pulse"
+                  : "bg-red-400 animate-pulse"
+              }`}
+              aria-hidden="true"
+            />
+            {connected ? "Connected" : isReconnecting ? "Reconnecting…" : "Connecting…"}
+          </div>
+        ) : null}
       </div>
 
       <main id="main-content" className="flex-1 flex flex-col min-h-0">
@@ -172,7 +174,7 @@ export default function PlayPage() {
         ) : null}
 
         {canShowApp && inGame && socket && gameState ? (
-          <div className="flex-1 min-h-0 flex flex-col py-1 sm:py-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] overflow-y-auto play-surface">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden play-surface">
             <GameBoard socket={socket} state={gameState} hand={hand} />
           </div>
         ) : null}

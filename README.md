@@ -281,8 +281,8 @@ Most are optional for local development. **Production** should set `CLIENT_ORIGI
 | `CLIENT_ORIGINS`           | `http://localhost:3000`    | Comma-separated allowed **browser** origins for Socket.IO CORS (e.g. `https://yourapp.com,https://www.yourapp.com`) |
 | `CORS_ORIGINS`             | —                          | Alias of `CLIENT_ORIGINS` |
 | `REDIS_URL`                | —                          | Full Redis URL (e.g. from Railway/Render). If set, overrides `REDIS_HOST` / `REDIS_PORT` |
-| `REDIS_HOST`               | `127.0.0.1`                | Redis host when `REDIS_URL` is unset |
-| `REDIS_PORT`               | `6379`                     | Redis port when `REDIS_URL` is unset |
+| `REDIS_HOST`               | —                          | Redis host (with `REDIS_PORT` or alone). If unset with no `REDIS_URL`, uses in-memory storage |
+| `REDIS_PORT`               | `6379`                     | Redis port when `REDIS_HOST` is set |
 | `NEXT_PUBLIC_SERVER_URL`   | *(same origin)*            | Optional override for the Socket.IO endpoint. Defaults to the page origin in the browser. |
 
 `NEXT_PUBLIC_*` is inlined at **build time** when set. Rebuild after changing it.

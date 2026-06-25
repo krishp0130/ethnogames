@@ -10,7 +10,7 @@ export const TRICK_LAYOUTS: Record<
     yOffset: number;
   }
 > = {
-  sm: { cardW: 44, cardH: 60, container: "w-44 h-48", xOffset: 44, yOffset: 50 },
+  sm: { cardW: 44, cardH: 60, container: "w-36 h-40", xOffset: 44, yOffset: 40 },
   md: { cardW: 56, cardH: 72, container: "w-64 h-72", xOffset: 62, yOffset: 66 },
   lg: {
     cardW: 72,
