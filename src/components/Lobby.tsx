@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { LobbyRoom, ClientGameState } from "@/types/game";
 import type { GameSocket } from "@/lib/socket";
+import { loadPlayerName, savePlayerName } from "@/lib/storage";
 
 interface LobbyProps {
   socket: GameSocket;
@@ -14,18 +15,14 @@ type LobbyView = "menu" | "browse" | "waiting";
 
 export default function Lobby({ socket, waitingState }: LobbyProps) {
   const [view, setView] = useState<LobbyView>("menu");
-  const [playerName, setPlayerName] = useState("");
+  const [playerName, setPlayerName] = useState(() => loadPlayerName());
   const [rooms, setRooms] = useState<LobbyRoom[]>([]);
   const [joinCode, setJoinCode] = useState("");
   const [currentRoom, setCurrentRoom] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const savedName = localStorage.getItem("ethnogames_name");
-    if (savedName) {
-      queueMicrotask(() => setPlayerName(savedName));
-    }
-  }, []);
+  const roomId = waitingState?.roomId ?? currentRoom;
+  const activeView: LobbyView = waitingState ? "waiting" : view;
 
   useEffect(() => {
     const onLobbyUpdate = (lobbyRooms: LobbyRoom[]) => {
@@ -55,7 +52,7 @@ export default function Lobby({ socket, waitingState }: LobbyProps) {
 
   const saveName = useCallback(() => {
     if (playerName.trim()) {
-      localStorage.setItem("ethnogames_name", playerName.trim());
+      savePlayerName(playerName.trim());
     }
   }, [playerName]);
 
@@ -108,7 +105,7 @@ export default function Lobby({ socket, waitingState }: LobbyProps) {
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-4 sm:p-6">
       <AnimatePresence mode="wait">
-        {view === "menu" && (
+        {activeView === "menu" && (
           <MenuView
             key="menu"
             playerName={playerName}
@@ -125,7 +122,7 @@ export default function Lobby({ socket, waitingState }: LobbyProps) {
           />
         )}
 
-        {view === "browse" && (
+        {activeView === "browse" && (
           <BrowseView
             key="browse"
             rooms={rooms}
@@ -135,11 +132,11 @@ export default function Lobby({ socket, waitingState }: LobbyProps) {
           />
         )}
 
-        {view === "waiting" && waitingState && (
+        {activeView === "waiting" && waitingState && roomId && (
           <WaitingView
             key="waiting"
             state={waitingState}
-            roomId={currentRoom!}
+            roomId={roomId}
             onAddBot={handleAddBot}
             onStart={handleStart}
           />
@@ -181,18 +178,28 @@ function MenuView({
       </div>
 
       <div className="space-y-5">
-        <input
-          type="text"
-          value={playerName}
-          onChange={(e) => setPlayerName(e.target.value)}
-          placeholder="Your name"
-          maxLength={20}
-          className="w-full px-4 py-3 bg-white/[0.06] border border-white/[0.1] rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/25 transition-all"
-          autoComplete="nickname"
-        />
+        <div>
+          <label htmlFor="player-name" className="sr-only">
+            Your name
+          </label>
+          <input
+            id="player-name"
+            name="playerName"
+            type="text"
+            value={playerName}
+            onChange={(e) => setPlayerName(e.target.value)}
+            placeholder="Your name…"
+            maxLength={20}
+            autoComplete="nickname"
+            enterKeyHint="done"
+            className="w-full px-4 py-3 bg-white/[0.06] border border-white/[0.1] rounded-xl text-base text-white placeholder-zinc-500 focus-visible:border-amber-500/50 focus-visible:ring-2 focus-visible:ring-amber-500/25 interactive-focus transition-[border-color,box-shadow]"
+          />
+        </div>
 
         {error && (
-          <p className="text-red-400 text-sm text-center">{error}</p>
+          <p className="text-red-400 text-sm text-center" role="alert" aria-live="polite">
+            {error}
+          </p>
         )}
 
         <button
@@ -209,15 +216,26 @@ function MenuView({
             Enter the 6-character code the host shared with you.
           </p>
           <div className="flex gap-2">
-            <input
-              type="text"
-              value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-              placeholder="Code"
-              maxLength={6}
-              className="flex-1 min-w-0 px-4 py-3 bg-white/[0.06] border border-white/[0.1] rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50 font-mono text-center text-lg tracking-widest uppercase"
-              onKeyDown={(e) => e.key === "Enter" && onJoinWithCode()}
-            />
+            <div className="flex-1 min-w-0">
+              <label htmlFor="room-code" className="sr-only">
+                Room code
+              </label>
+              <input
+                id="room-code"
+                name="roomCode"
+                type="text"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                placeholder="ABC123…"
+                maxLength={6}
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint="go"
+                className="w-full px-4 py-3 bg-white/[0.06] border border-white/[0.1] rounded-xl text-base text-white placeholder-zinc-500 focus-visible:border-emerald-500/50 focus-visible:ring-2 focus-visible:ring-emerald-500/25 interactive-focus font-mono text-center text-lg tracking-widest uppercase"
+                onKeyDown={(e) => e.key === "Enter" && onJoinWithCode()}
+              />
+            </div>
             <button
               type="button"
               onClick={onJoinWithCode}
@@ -262,14 +280,16 @@ function BrowseView({
     >
       <div className="flex items-center justify-between mb-6">
         <button
+          type="button"
           onClick={onBack}
-          className="text-zinc-500 hover:text-white text-sm flex items-center gap-1 transition-colors"
+          className="min-h-[44px] px-2 text-zinc-500 hover:text-white text-sm flex items-center gap-1 transition-colors"
         >
           ← Back
         </button>
         <button
+          type="button"
           onClick={onRefresh}
-          className="text-zinc-500 hover:text-white text-sm transition-colors"
+          className="min-h-[44px] px-2 text-zinc-500 hover:text-white text-sm transition-colors"
         >
           Refresh
         </button>
@@ -339,11 +359,12 @@ function WaitingView({
             {roomId}
           </span>
           <button
+            type="button"
             onClick={() => navigator.clipboard.writeText(roomId)}
-            className="text-zinc-500 hover:text-white transition-colors"
-            title="Copy code"
+            className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-zinc-500 hover:text-white transition-colors rounded-lg"
+            aria-label="Copy room code"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
           </button>

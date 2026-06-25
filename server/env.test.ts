@@ -1,8 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
-import {
-  parseClientOriginsFromEnv,
-  createCorsOriginValidator,
-} from "./env";
+import { describe, it, expect } from "vitest";
+import { parseClientOriginsFromEnv } from "./env";
 
 describe("parseClientOriginsFromEnv", () => {
   it("defaults to localhost when unset", () => {
@@ -29,25 +26,5 @@ describe("parseClientOriginsFromEnv", () => {
         CORS_ORIGINS: "https://ignored.com",
       })
     ).toEqual(["https://primary.com"]);
-  });
-});
-
-describe("createCorsOriginValidator", () => {
-  it("allows missing Origin", () => {
-    const cb = vi.fn();
-    createCorsOriginValidator(["https://x.com"])(undefined, cb);
-    expect(cb).toHaveBeenCalledWith(null, true);
-  });
-
-  it("allows listed Origin", () => {
-    const cb = vi.fn();
-    createCorsOriginValidator(["https://x.com"])("https://x.com", cb);
-    expect(cb).toHaveBeenCalledWith(null, true);
-  });
-
-  it("rejects unlisted Origin", () => {
-    const cb = vi.fn();
-    createCorsOriginValidator(["https://x.com"])("https://evil.com", cb);
-    expect(cb).toHaveBeenCalledWith(null, false);
   });
 });

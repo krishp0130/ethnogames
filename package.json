@@ -2,39 +2,42 @@
   "name": "ethnogames",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "dev": "next dev",
-    "dev:server": "tsx watch server/index.ts",
-    "dev:all": "npm run dev:server & npm run dev",
+    "dev": "tsx watch server.ts",
     "build": "next build",
-    "start": "next start",
-    "start:server": "tsx server/index.ts",
+    "start": "NODE_ENV=production tsx server.ts",
+    "railway": "railway",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
-    "cors": "^2.8.6",
-    "express": "^5.2.1",
     "framer-motion": "^12.38.0",
     "ioredis": "^5.10.1",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
+    "@railway/cli": "^5.23.1",
     "@tailwindcss/postcss": "^4",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "jsdom": "^28.1.0",
     "tailwindcss": "^4",
-    "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^3.2.4"
   }

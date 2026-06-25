@@ -14,6 +14,14 @@ describe("createDeck", () => {
     const ids = new Set(deck.map((c) => c.id));
     expect(ids.size).toBe(52);
   });
+
+  it("includes every suit and rank combination", () => {
+    const deck = createDeck();
+    const suits = new Set(deck.map((c) => c.suit));
+    expect(suits.size).toBe(4);
+    const tens = deck.filter((c) => c.rank === "10");
+    expect(tens).toHaveLength(4);
+  });
 });
 
 describe("shuffleDeck", () => {
@@ -24,6 +32,22 @@ describe("shuffleDeck", () => {
     expect([...shuffled].sort((a, b) => a.id.localeCompare(b.id))).toEqual(
       [...deck].sort((a, b) => a.id.localeCompare(b.id))
     );
+  });
+
+  it("does not mutate the original deck", () => {
+    const deck = createDeck();
+    const copy = [...deck];
+    shuffleDeck(deck);
+    expect(deck).toEqual(copy);
+  });
+
+  it("can change card order", () => {
+    const deck = createDeck();
+    const original = Math.random;
+    Math.random = () => 0;
+    const shuffled = shuffleDeck(deck);
+    Math.random = original;
+    expect(shuffled[0].id).not.toBe(deck[0].id);
   });
 });
 
@@ -57,5 +81,9 @@ describe("sortHand", () => {
     ];
     const sorted = sortHand(hand);
     expect(sorted.map((c) => c.id)).toEqual(["2_spades", "A_spades", "A_hearts"]);
+  });
+
+  it("returns empty array for empty hand", () => {
+    expect(sortHand([])).toEqual([]);
   });
 });

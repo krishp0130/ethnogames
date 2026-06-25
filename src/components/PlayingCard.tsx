@@ -1,9 +1,11 @@
 "use client";
 
+import { memo } from "react";
 import { motion } from "framer-motion";
 import { Card, SUIT_SYMBOLS } from "@/types/game";
+import type { CardSize } from "@/lib/trickLayout";
 
-export type CardSize = "sm" | "md" | "lg";
+export type { CardSize };
 
 const SIZE_CONFIG: Record<CardSize, {
   card: string;
@@ -53,7 +55,7 @@ interface PlayingCardProps {
   suppressWhileHover?: boolean;
 }
 
-export default function PlayingCard({
+export default memo(function PlayingCard({
   card,
   onClick,
   disabled,
@@ -108,9 +110,15 @@ export default function PlayingCard({
 
   return (
     <motion.button
+      type="button"
       layoutId={layoutId}
       onClick={disabled ? undefined : onClick}
       disabled={disabled && !onClick}
+      aria-label={
+        onClick && !disabled
+          ? `Play ${card.rank} of ${card.suit}`
+          : `${card.rank} of ${card.suit}`
+      }
       className={`
         ${cfg.card}
         bg-white
@@ -126,7 +134,7 @@ export default function PlayingCard({
         ${disabled
           ? "opacity-30 cursor-not-allowed"
           : onClick
-          ? "cursor-pointer hover:border-blue-400 hover:shadow-blue-400/20 hover:shadow-xl active:scale-[0.97]"
+          ? "cursor-pointer hover:border-blue-400 hover:shadow-blue-400/20 hover:shadow-xl active:scale-[0.97] interactive-focus"
           : ""
         }
         ${className}
@@ -157,4 +165,4 @@ export default function PlayingCard({
       </div>
     </motion.button>
   );
-}
+});

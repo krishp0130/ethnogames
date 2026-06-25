@@ -3,7 +3,13 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { TrickCard, ClientPlayer, SUIT_SYMBOLS, Suit } from "@/types/game";
 import { useMediaQuery } from "@/lib/useMediaQuery";
-import type { CardSize } from "./PlayingCard";
+import {
+  TRICK_LAYOUTS,
+  trickEntryFor,
+  trickPositionFor,
+  type CardSize,
+} from "@/lib/trickLayout";
+import { getRelativeSeat } from "@/lib/seats";
 import PlayingCard from "./PlayingCard";
 
 interface TrickAreaProps {
@@ -15,64 +21,6 @@ interface TrickAreaProps {
   message: string;
 }
 
-function getSeatRelativeToMe(seatIndex: number, myIndex: number): number {
-  return (seatIndex - myIndex + 4) % 4;
-}
-
-// Per-card-size layout. Offsets are chosen so each card is fully visible (no
-// overlap with its neighbors) and the four positions form a clean cross.
-// Card dims used: md = 56x80, lg = 72x104.
-// Layouts are chosen so that adjacent cards in the cross never overlap each
-// other visually. Specifically xOffset >= cardW so the top/bottom card and
-// the side card don't intersect horizontally even when their y-ranges overlap.
-const LAYOUTS: Record<
-  CardSize,
-  {
-    cardW: number;
-    cardH: number;
-    /** Tailwind size for the trick area square container */
-    container: string;
-    /** Horizontal offset for left/right seats */
-    xOffset: number;
-    /** Vertical offset for top/bottom seats */
-    yOffset: number;
-  }
-> = {
-  sm: { cardW: 40, cardH: 56, container: "w-44 h-48", xOffset: 44, yOffset: 50 },
-  md: { cardW: 56, cardH: 80, container: "w-64 h-72", xOffset: 62, yOffset: 70 },
-  lg: { cardW: 72, cardH: 104, container: "w-[22rem] h-[22rem]", xOffset: 80, yOffset: 90 },
-};
-
-function positionFor(layout: (typeof LAYOUTS)[CardSize], relativeSeat: number) {
-  switch (relativeSeat) {
-    case 0:
-      return { x: 0, y: layout.yOffset }; // me (bottom)
-    case 1:
-      return { x: layout.xOffset, y: 0 }; // right
-    case 2:
-      return { x: 0, y: -layout.yOffset }; // top (partner)
-    case 3:
-      return { x: -layout.xOffset, y: 0 }; // left
-    default:
-      return { x: 0, y: 0 };
-  }
-}
-
-function entryFor(relativeSeat: number) {
-  switch (relativeSeat) {
-    case 0:
-      return { x: 0, y: 180 };
-    case 1:
-      return { x: 180, y: 0 };
-    case 2:
-      return { x: 0, y: -180 };
-    case 3:
-      return { x: -180, y: 0 };
-    default:
-      return { x: 0, y: 0 };
-  }
-}
-
 export default function TrickArea({
   currentTrick,
   players,
@@ -82,8 +30,9 @@ export default function TrickArea({
   message,
 }: TrickAreaProps) {
   const isCompact = useMediaQuery("(max-width: 639.98px)");
-  const size: CardSize = isCompact ? "md" : "lg";
-  const layout = LAYOUTS[size];
+  const isNarrow = useMediaQuery("(max-width: 379.98px)");
+  const size: CardSize = isNarrow ? "sm" : isCompact ? "md" : "lg";
+  const layout = TRICK_LAYOUTS[size];
 
   return (
     <div className={`relative ${layout.container}`}>
@@ -105,12 +54,12 @@ export default function TrickArea({
       {/* Cards played to trick */}
       <AnimatePresence mode="popLayout">
         {currentTrick.map((tc) => {
-          const relativeSeat = getSeatRelativeToMe(
+          const relativeSeat = getRelativeSeat(
             players[tc.playerIndex].seatIndex,
             myIndex
           );
-          const pos = positionFor(layout, relativeSeat);
-          const entry = entryFor(relativeSeat);
+          const pos = trickPositionFor(layout, relativeSeat);
+          const entry = trickEntryFor(relativeSeat);
 
           return (
             <motion.div
@@ -124,7 +73,7 @@ export default function TrickArea({
                 x: entry.x,
                 y: entry.y,
                 opacity: 0,
-                scale: 0.3,
+                scale: 0.6,
               }}
               animate={{
                 x: pos.x,
@@ -134,13 +83,13 @@ export default function TrickArea({
               }}
               exit={{
                 opacity: 0,
-                scale: 0.5,
-                transition: { duration: 0.2 },
+                scale: 0.6,
+                transition: { duration: 0.18 },
               }}
               transition={{
                 type: "spring",
-                stiffness: 200,
-                damping: 20,
+                stiffness: 260,
+                damping: 26,
               }}
             >
               <PlayingCard card={tc.card} size={size} animate={false} />

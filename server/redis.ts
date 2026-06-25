@@ -8,6 +8,16 @@ let redis: Redis | null = null;
 const fallbackStore = new Map<string, string>();
 let usingFallback = false;
 
+/** @internal Force in-memory storage (for unit tests without Redis). */
+export function resetRedisStorageForTests(): void {
+  fallbackStore.clear();
+  usingFallback = true;
+  if (redis) {
+    redis.disconnect();
+    redis = null;
+  }
+}
+
 async function scanKeys(client: Redis, pattern: string): Promise<string[]> {
   const keys: string[] = [];
   let cursor = "0";

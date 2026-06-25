@@ -4,6 +4,12 @@ Play traditional card games from around the world with friends and family — on
 
 ---
 
+## Documentation for agents
+
+Structured guides for AI assistants and maintainers live in **[docs/AGENTS.md](./docs/AGENTS.md)** (architecture, socket protocol, known issues, production checklist).
+
+---
+
 ## Table of Contents
 
 - [Games](#games)
@@ -72,20 +78,10 @@ npm install
 
 ### Running in Development
 
-You need two processes: the game server (Socket.IO + Express) and the Next.js frontend.
+One process serves the Next.js site and the Socket.IO game server:
 
 ```bash
-# Terminal 1 — Game server (port 3001, hot-reloads on file changes)
-npm run dev:server
-
-# Terminal 2 — Next.js frontend (port 3000)
 npm run dev
-```
-
-Or run both in a single terminal:
-
-```bash
-npm run dev:all
 ```
 
 Then open [http://localhost:3000](http://localhost:3000).
@@ -107,19 +103,17 @@ Then open [http://localhost:3000](http://localhost:3000).
 The application follows an **authoritative server model** — all game logic executes on the server. The client is a thin rendering layer.
 
 ```
-┌──────────────┐     Socket.IO      ┌──────────────────────┐
-│   Browser     │ ◄──────────────► │   Game Server (:3001) │
-│   (Next.js)   │   play_card       │   ┌────────────────┐ │
-│               │   game_state      │   │  Game Engine    │ │
-│  - Lobby UI   │   trick_complete  │   │  (engine.ts)    │ │
-│  - Game Board │   trump_set       │   ├────────────────┤ │
-│  - Animations │                   │   │  Bot AI         │ │
-│               │                   │   │  (ai.ts)        │ │
-└──────────────┘                   │   ├────────────────┤ │
-                                    │   │  Redis / Memory │ │
-                                    │   │  (redis.ts)     │ │
-                                    │   └────────────────┘ │
-                                    └──────────────────────┘
+┌──────────────┐     Socket.IO      ┌──────────────────────────────┐
+│   Browser     │ ◄──────────────► │   Single Node server (:3000)  │
+│   (Next.js)   │   play_card       │   Next.js + Socket.IO         │
+│               │   game_state      │   ┌────────────────────────┐  │
+│  - Lobby UI   │   trick_complete  │   │  Game Engine (engine)  │  │
+│  - Game Board │   trump_set       │   ├────────────────────────┤  │
+│  - Animations │                   │   │  Bot AI (ai.ts)        │  │
+│               │                   │   ├────────────────────────┤  │
+└──────────────┘                   │   │  Redis / Memory        │  │
+                                    │   └────────────────────────┘  │
+                                    └──────────────────────────────┘
 ```
 
 ### Key Design Decisions
@@ -169,9 +163,9 @@ ethnogames/
 │   └── types/
 │       └── game.ts                # Shared types used by both client and server
 │
-├── server/                         # Game server (runs independently from Next.js)
-│   ├── index.ts                    # Express + Socket.IO entry point, event handlers
-│   ├── env.ts                      # CORS allow-list from `CLIENT_ORIGINS` / `CORS_ORIGINS`
+├── server/                         # Game logic + Socket.IO (attached in server.ts)
+│   ├── gameSocket.ts               # Socket.IO event handlers
+│   ├── env.ts                      # CORS allow-list from `CLIENT_ORIGINS`
 │   ├── redis.ts                    # Redis client with in-memory fallback
 │   ├── tsconfig.json               # Server-specific TypeScript config
 │   └── game/
@@ -179,6 +173,7 @@ ethnogames/
 │       ├── deck.ts                 # Deck creation, shuffle, deal, sort, rank utilities
 │       └── ai.ts                   # Bot AI — strategic card selection
 │
+├── server.ts                       # Custom Next.js server entry (site + game socket)
 ├── vitest.config.ts                # Vitest (unit tests)
 ├── .github/
 │   └── workflows/
@@ -276,43 +271,35 @@ First team to reach **5 points** wins.
 
 ## Environment Variables
 
-Most are optional for local development. **Production** should set CORS and the public game-server URL.
+Most are optional for local development. **Production** should set `CLIENT_ORIGINS` if the site is served from multiple origins (e.g. apex + `www`).
 
 | Variable                   | Default                    | Description |
 | -------------------------- | -------------------------- | ----------- |
-| `PORT`                     | `3001`                     | Game server listen port |
+| `PORT`                     | `3000`                     | HTTP listen port (Next.js + Socket.IO) |
 | `HOST`                     | `0.0.0.0`                  | Bind address (`0.0.0.0` for Docker / PaaS) |
-| `CLIENT_ORIGINS`           | `http://localhost:3000`    | Comma-separated allowed **browser** origins for CORS + Socket.IO (e.g. `https://yourapp.com,https://www.yourapp.com`) |
+| `NODE_ENV`                 | —                          | Set to `production` when running `npm run start` after `npm run build` |
+| `CLIENT_ORIGINS`           | `http://localhost:3000`    | Comma-separated allowed **browser** origins for Socket.IO CORS (e.g. `https://yourapp.com,https://www.yourapp.com`) |
 | `CORS_ORIGINS`             | —                          | Alias of `CLIENT_ORIGINS` |
 | `REDIS_URL`                | —                          | Full Redis URL (e.g. from Railway/Render). If set, overrides `REDIS_HOST` / `REDIS_PORT` |
 | `REDIS_HOST`               | `127.0.0.1`                | Redis host when `REDIS_URL` is unset |
 | `REDIS_PORT`               | `6379`                     | Redis port when `REDIS_URL` is unset |
-| `NEXT_PUBLIC_SERVER_URL`   | `http://localhost:3001`    | Socket.IO endpoint for the **Next.js build** (must be the URL players’ browsers can reach, including `wss://` on HTTPS sites) |
+| `NEXT_PUBLIC_SERVER_URL`   | *(same origin)*            | Optional override for the Socket.IO endpoint. Defaults to the page origin in the browser. |
 
-`NEXT_PUBLIC_*` is inlined at **build time**. Rebuild the frontend after changing it.
+`NEXT_PUBLIC_*` is inlined at **build time** when set. Rebuild after changing it.
 
 ---
 
 ## Deployment
 
-The app is **two services**: the Next.js site (static + SSR shell) and the **Node game server** (`server/index.ts`). Each room is isolated in shared storage (Redis) with a per-room lock on the game process; many lobbies and many concurrent games work on a **single** game-server instance.
+The app runs as **one Node process** (`server.ts`): Next.js for pages and Socket.IO for real-time play on the same port. Each room is isolated in shared storage (Redis) with a per-room lock; many lobbies and concurrent games run on a single instance.
 
 ### Checklist
 
-1. **Run Redis** in production so all rooms survive restarts and every game-server instance sees the same room keys (Upstash, ElastiCache, Railway Redis, etc.).
-2. Set **`CLIENT_ORIGINS`** to your real site origin(s) exactly as the browser uses them (scheme + host + port).
-3. Set **`NEXT_PUBLIC_SERVER_URL`** to the public WebSocket base URL of the game server, then **`npm run build`** for the frontend.
-4. Expose **`GET /health`** on the game server for load balancer health checks.
-5. Run **`npm run start`** (Next) and **`npm run start:server`** (game server), or your process manager / container entrypoint for both.
-
-### Horizontal scaling (multiple game-server replicas)
-
-Today, **in-memory** data includes the Socket.IO room membership map and per-room mutexes. **Redis** already holds authoritative game state, but **broadcasts** use `io.to(socketId)` and require the socket to be on **that** Node process unless you add:
-
-- **`@socket.io/redis-adapter`** (or another adapter) so emits reach every replica, and  
-- **Sticky sessions** at the load balancer so a player’s WebSocket stays pinned to one instance (or migrate fully to Redis adapter + shared presence).
-
-Until then, run **one** game-server replica, or accept that multi-replica setups need the adapter.
+1. **Run Redis** in production so rooms survive restarts (Upstash, Railway Redis, etc.).
+2. Set **`CLIENT_ORIGINS`** to your real site origin(s) if you use both apex and `www`.
+3. Run **`npm run build`**, then **`npm run start`** with `NODE_ENV=production`.
+4. Expose **`GET /health`** for load balancer health checks.
+5. Point your domain at this single service — no separate game-server subdomain required.
 
 ### Redis vs a traditional database
 
@@ -339,12 +326,9 @@ GitHub Actions runs **`npm ci`**, **`lint`**, **`test`**, and **`build`** on pus
 
 | Script             | Command                         | Description                                   |
 | ------------------ | ------------------------------- | --------------------------------------------- |
-| `npm run dev`      | `next dev`                      | Start Next.js in development mode (port 3000) |
-| `npm run dev:server` | `tsx watch server/index.ts`   | Start game server with hot reload (port 3001) |
-| `npm run dev:all`  | Both of the above in parallel   | Start everything in one terminal              |
+| `npm run dev`      | `tsx watch server.ts`           | Start Next.js + game server in dev (port 3000) |
 | `npm run build`    | `next build`                    | Production build of the frontend              |
-| `npm run start`    | `next start`                    | Serve the production frontend build           |
-| `npm run start:server` | `tsx server/index.ts`       | Start game server without hot reload          |
+| `npm run start`    | `tsx server.ts`                 | Serve production build + game server          |
 | `npm run lint`     | `eslint`                        | Run ESLint across the project                 |
 | `npm run test`     | `vitest run`                    | Run unit tests once                           |
 | `npm run test:watch` | `vitest`                     | Run unit tests in watch mode                  |

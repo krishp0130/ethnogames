@@ -1,14 +1,17 @@
 "use client";
 
+import { memo } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Card, ClientPlayer } from "@/types/game";
-import type { CardSize } from "./PlayingCard";
+import { meCardHoverWrapClass, overlapForFan } from "@/lib/handLayout";
+import { useViewportWidth } from "@/lib/useMediaQuery";
+import type { CardSize } from "@/lib/trickLayout";
 import PlayingCard from "./PlayingCard";
 
 interface PlayerHandProps {
   player: ClientPlayer;
   hand: Card[];
-  validCards: string[];
+  validCards: ReadonlySet<string>;
   isCurrentTurn: boolean;
   isMe: boolean;
   onCardClick: (cardId: string) => void;
@@ -17,36 +20,7 @@ interface PlayerHandProps {
   compact?: boolean;
 }
 
-function overlapForFan(
-  cardWidth: number,
-  count: number,
-  availablePx: number
-): number {
-  if (count <= 1) return 0;
-  const raw = (count * cardWidth - availablePx) / (count - 1);
-  return Math.min(58, Math.max(22, Math.ceil(raw)));
-}
-
-/** Wrapper so hovered card stacks above neighbors and lifts toward the table center */
-function meCardHoverWrapClass(
-  position: "bottom" | "right" | "top" | "left",
-  isHorizontal: boolean
-): string {
-  const base =
-    "group/card relative shrink-0 z-0 transition-[transform,z-index] duration-200 ease-out hover:!z-[60] focus-within:!z-[60]";
-  if (isHorizontal) {
-    if (position === "bottom") {
-      return `${base} origin-bottom hover:scale-110 hover:-translate-y-4 focus-within:scale-110 focus-within:-translate-y-4`;
-    }
-    return `${base} origin-top hover:scale-110 hover:translate-y-4 focus-within:scale-110 focus-within:translate-y-4`;
-  }
-  if (position === "left") {
-    return `${base} origin-left hover:scale-110 hover:-translate-x-3 focus-within:scale-110 focus-within:-translate-x-3`;
-  }
-  return `${base} origin-right hover:scale-110 hover:translate-x-3 focus-within:scale-110 focus-within:translate-x-3`;
-}
-
-export default function PlayerHand({
+export default memo(function PlayerHand({
   player,
   hand,
   validCards,
@@ -56,12 +30,19 @@ export default function PlayerHand({
   position,
   compact = false,
 }: PlayerHandProps) {
+  const viewportWidth = useViewportWidth();
   const isHorizontal = position === "top" || position === "bottom";
   const cardCount = isMe ? hand.length : player.cardCount;
 
-  const myCardSize: CardSize = compact ? "md" : "lg";
-  const myCardWidth = compact ? 56 : 72;
-  const availableForFan = compact ? 292 : 520;
+  const isVeryNarrow = compact && viewportWidth > 0 && viewportWidth < 380;
+  const myCardSize: CardSize = isVeryNarrow ? "sm" : compact ? "md" : "lg";
+  const myCardWidth = isVeryNarrow ? 40 : compact ? 56 : 72;
+  const availableForFan =
+    compact && viewportWidth > 0
+      ? Math.min(viewportWidth - 28, 520)
+      : compact
+        ? 292
+        : 520;
 
   const containerClass: Record<string, string> = {
     bottom: "absolute bottom-1 sm:bottom-2 left-1/2 -translate-x-1/2 z-20 max-w-[100vw] px-1",
@@ -77,8 +58,8 @@ export default function PlayerHand({
     right: "text-center mb-0.5 sm:mb-1",
   };
 
-  const oppHOverlap = compact ? 20 : 28;
-  const oppVOverlap = compact ? 36 : 44;
+  const oppHOverlap = compact ? (isVeryNarrow ? 16 : 20) : 28;
+  const oppVOverlap = compact ? (isVeryNarrow ? 28 : 36) : 44;
 
   const handFlexCrossAlign =
     isMe && isHorizontal
@@ -121,7 +102,7 @@ export default function PlayerHand({
       </div>
 
       <div
-        className={`flex ${isHorizontal ? "flex-row" : "flex-col"} ${handFlexCrossAlign} ${handFlexInset} justify-center overflow-x-auto overflow-y-visible max-w-[100vw] sm:overflow-visible [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${isMe && !isHorizontal ? "py-4" : ""}`}
+        className={`hand-scroll flex ${isHorizontal ? "flex-row" : "flex-col"} ${handFlexCrossAlign} ${handFlexInset} justify-center overflow-x-auto overflow-y-visible max-w-[100vw] sm:overflow-visible [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${isMe && !isHorizontal ? "py-4" : ""}`}
         style={
           isMe && isHorizontal && hand.length > 1
             ? {
@@ -134,16 +115,17 @@ export default function PlayerHand({
         <AnimatePresence mode="popLayout">
           {isMe
             ? hand.map((card, idx) => {
-                const isValid = validCards.includes(card.id);
+                const isValid = validCards.has(card.id);
                 const overlap = overlapForFan(
                   myCardWidth,
                   hand.length,
                   availableForFan
                 );
+                const canLift = isCurrentTurn && isValid;
                 return (
                   <div
                     key={card.id}
-                    className={meCardHoverWrapClass(position, isHorizontal)}
+                    className={meCardHoverWrapClass(position, isHorizontal, canLift)}
                     style={
                       isHorizontal && idx > 0
                         ? { marginLeft: `-${overlap}px` }
@@ -186,4 +168,4 @@ export default function PlayerHand({
       </div>
     </div>
   );
-}
+});

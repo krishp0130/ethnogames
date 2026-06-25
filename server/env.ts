@@ -1,5 +1,5 @@
 /**
- * Shared server configuration for Express + Socket.IO (CORS, bind address).
+ * Shared server configuration for Socket.IO CORS allow-list.
  */
 
 export function parseClientOriginsFromEnv(
@@ -19,19 +19,3 @@ export function parseClientOriginsFromEnv(
 }
 
 export const allowedOrigins = parseClientOriginsFromEnv(process.env);
-
-/** Build a CORS `origin` callback for a fixed allow-list */
-export function createCorsOriginValidator(origins: string[]) {
-  return (
-    origin: string | undefined,
-    callback: (err: Error | null, allow?: boolean) => void
-  ): void => {
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-    callback(null, origins.includes(origin));
-  };
-}
-
-export const corsOriginValidator = createCorsOriginValidator(allowedOrigins);

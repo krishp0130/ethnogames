@@ -21,6 +21,34 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Visible keyboard focus — use with focus:outline-none */
+.interactive-focus {
+  outline: none;
+}
+.interactive-focus:focus-visible {
+  outline: 2px solid rgba(251, 191, 36, 0.65);
+  outline-offset: 2px;
+}
+
+/* Prevent iOS Safari from zooming focused inputs (needs >= 16px) */
+input,
+select,
+textarea {
+  font-size: max(16px, 1em);
 }
 
 body {
@@ -29,6 +57,27 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Play route: reduce pull-to-refresh / rubber-banding during a hand */
+.play-surface {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Horizontal card fan — smooth swipe on iOS */
+.hand-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pinch-zoom;
+}
+
+/* Remove default tap flash; keep focus rings for keyboard users */
+button,
+a[href],
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Faster taps on mobile; avoids ~300ms double-tap zoom delay on controls */
@@ -37,6 +86,18 @@ a[href],
 input[type="submit"],
 [role="button"] {
   touch-action: manipulation;
+}
+
+/* Touch devices: lift playable cards on press (no hover on phones) */
+@media (hover: none) and (pointer: coarse) {
+  .card-touch-lift:active {
+    transform: scale(1.08) translateY(-0.5rem);
+    z-index: 60;
+  }
+  .card-touch-lift-side:active {
+    transform: scale(1.08);
+    z-index: 60;
+  }
 }
 
 /* Felt-style table background for the game board */
