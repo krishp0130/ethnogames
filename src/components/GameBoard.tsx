@@ -53,6 +53,11 @@ export default function GameBoard({ socket, state, hand }: GameBoardProps) {
     [state.players, myIndex]
   );
 
+  const myPlayer = orderedPlayers.find((p) => p.seatIndex === myIndex);
+  const tablePlayers = compactLayout
+    ? orderedPlayers.filter((p) => p.seatIndex !== myIndex)
+    : orderedPlayers;
+
   return (
     <div className="flex gap-2 sm:gap-4 lg:gap-6 items-start justify-center w-full max-w-7xl mx-auto px-1.5 sm:px-2 py-1 sm:py-2 sm:p-4">
       {/* Scoreboard (desktop) */}
@@ -60,7 +65,7 @@ export default function GameBoard({ socket, state, hand }: GameBoardProps) {
         <ScoreBoard state={state} />
       </div>
 
-      <div className="flex-1 flex flex-col items-center gap-4">
+      <div className="flex-1 flex flex-col items-center gap-2 sm:gap-4 min-h-0 w-full">
         {/* Mobile score strip */}
         <div className="lg:hidden w-full flex flex-col gap-1 bg-white/[0.04] backdrop-blur-sm rounded-xl border border-white/[0.08] px-2.5 py-2 text-sm">
           <div className="flex items-center justify-between gap-1.5">
@@ -88,8 +93,8 @@ export default function GameBoard({ socket, state, hand }: GameBoardProps) {
           </div>
         </div>
 
-        {/* Game table — sized to fit mobile browser chrome (nav + score + status) */}
-        <div className="relative w-full max-w-2xl mx-auto aspect-[10/11] sm:aspect-square max-sm:max-h-[min(90vw,calc(100dvh-13.5rem))] max-sm:min-h-[17.5rem] felt-bg rounded-2xl sm:rounded-3xl border border-emerald-700/20 shadow-2xl shadow-black/50">
+        {/* Game table — sized to fit mobile browser chrome (nav + score + docked hand) */}
+        <div className="relative w-full max-w-2xl mx-auto aspect-[10/11] sm:aspect-square max-sm:max-h-[min(72vw,calc(100dvh-20rem))] max-sm:min-h-[14rem] felt-bg rounded-2xl sm:rounded-3xl border border-emerald-700/20 shadow-2xl shadow-black/50 overflow-visible">
           {/* Subtle inner glow */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(16,185,129,0.06),transparent_70%)]" />
           <div className="absolute inset-3 sm:inset-5 rounded-xl sm:rounded-2xl border border-emerald-600/10" />
@@ -106,8 +111,8 @@ export default function GameBoard({ socket, state, hand }: GameBoardProps) {
             />
           </div>
 
-          {/* Player hands */}
-          {orderedPlayers.map((player) => {
+          {/* Player hands (opponents on table; my hand docks below on mobile) */}
+          {tablePlayers.map((player) => {
             const pos = POSITIONS[player.relativePos];
             const isMe = player.seatIndex === myIndex;
             return (
@@ -222,6 +227,24 @@ export default function GameBoard({ socket, state, hand }: GameBoardProps) {
             )}
           </AnimatePresence>
         </div>
+
+        {compactLayout && myPlayer ? (
+          <PlayerHand
+            key={`${myPlayer.id}-dock`}
+            player={myPlayer}
+            hand={hand}
+            position="bottom"
+            validCards={validCardIds}
+            isCurrentTurn={
+              state.currentPlayerIndex === myPlayer.seatIndex &&
+              state.phase === "playing"
+            }
+            isMe
+            onCardClick={handlePlayCard}
+            compact
+            docked
+          />
+        ) : null}
 
         {/* Status bar */}
         <motion.div

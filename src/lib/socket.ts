@@ -15,12 +15,21 @@ export function resolveSocketUrl(): string {
   return "http://localhost:3000";
 }
 
+export function getSocketOptions() {
+  return {
+    autoConnect: false,
+    // Polling first helps on mobile networks and behind some CDNs/proxies.
+    transports: ["polling", "websocket"] as ("polling" | "websocket")[],
+    withCredentials: true,
+    reconnection: true,
+    reconnectionAttempts: 10,
+    timeout: 20_000,
+  };
+}
+
 export function getSocket(): GameSocket {
   if (!socket) {
-    socket = io(resolveSocketUrl(), {
-      autoConnect: false,
-      transports: ["websocket", "polling"],
-    });
+    socket = io(resolveSocketUrl(), getSocketOptions());
   }
   return socket;
 }

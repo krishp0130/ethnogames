@@ -32,6 +32,7 @@ const GameBoard = dynamic(() => import("@/components/GameBoard"), {
 export default function PlayPage() {
   const [socket, setSocket] = useState<GameSocket | null>(null);
   const [connected, setConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [gameState, setGameState] = useState<ClientGameState | null>(null);
   const [hand, setHand] = useState<Card[]>([]);
   const pendingRejoin = useRef(false);
@@ -49,10 +50,16 @@ export default function PlayPage() {
     };
 
     const onConnect = () => {
+      setConnectionError(null);
       setConnected(true);
       tryRejoin();
     };
     const onDisconnect = () => setConnected(false);
+    const onConnectError = (err: Error) => {
+      setConnectionError(
+        err.message || "Could not reach the game server. Check your connection and try again."
+      );
+    };
 
     const onGameState = (state: ClientGameState, playerHand: Card[]) => {
       pendingRejoin.current = false;
@@ -78,6 +85,7 @@ export default function PlayPage() {
 
     s.on("connect", onConnect);
     s.on("disconnect", onDisconnect);
+    s.on("connect_error", onConnectError);
     s.on("game_state", onGameState);
     s.on("room_joined", onRoomJoined);
     s.on("error", onError);
@@ -93,6 +101,7 @@ export default function PlayPage() {
     return () => {
       s.off("connect", onConnect);
       s.off("disconnect", onDisconnect);
+      s.off("connect_error", onConnectError);
       s.off("game_state", onGameState);
       s.off("room_joined", onRoomJoined);
       s.off("error", onError);
@@ -140,9 +149,12 @@ export default function PlayPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <div className="text-center">
+              <div className="text-center px-6 max-w-sm">
                 <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                 <p className="text-zinc-400">Connecting to game server…</p>
+                {connectionError ? (
+                  <p className="text-red-400 text-sm mt-3">{connectionError}</p>
+                ) : null}
               </div>
             </motion.div>
           ) : null}

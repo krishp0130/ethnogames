@@ -58,7 +58,11 @@ describe("getSocket / connectSocket / disconnectSocket", () => {
     expect(io).toHaveBeenCalledTimes(1);
     expect(io).toHaveBeenCalledWith(
       "http://localhost:3000",
-      expect.objectContaining({ autoConnect: false })
+      expect.objectContaining({
+        autoConnect: false,
+        transports: ["polling", "websocket"],
+        withCredentials: true,
+      })
     );
   });
 

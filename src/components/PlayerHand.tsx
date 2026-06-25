@@ -18,6 +18,8 @@ interface PlayerHandProps {
   position: "bottom" | "right" | "top" | "left";
   /** Narrow viewport — tighter fan, smaller hand cards */
   compact?: boolean;
+  /** Mobile: render below the table instead of overlaying the felt */
+  docked?: boolean;
 }
 
 export default memo(function PlayerHand({
@@ -29,6 +31,7 @@ export default memo(function PlayerHand({
   onCardClick,
   position,
   compact = false,
+  docked = false,
 }: PlayerHandProps) {
   const viewportWidth = useViewportWidth();
   const isHorizontal = position === "top" || position === "bottom";
@@ -38,14 +41,18 @@ export default memo(function PlayerHand({
   const myCardSize: CardSize = isVeryNarrow ? "sm" : compact ? "md" : "lg";
   const myCardWidth = isVeryNarrow ? 40 : compact ? 56 : 72;
   const availableForFan =
-    compact && viewportWidth > 0
-      ? Math.min(viewportWidth - 28, 520)
-      : compact
-        ? 292
-        : 520;
+    docked && viewportWidth > 0
+      ? viewportWidth - 20
+      : compact && viewportWidth > 0
+        ? Math.min(viewportWidth - 28, 520)
+        : compact
+          ? 292
+          : 520;
 
   const containerClass: Record<string, string> = {
-    bottom: "absolute bottom-1 sm:bottom-2 left-1/2 -translate-x-1/2 z-20 max-w-[100vw] px-1",
+    bottom: docked
+      ? "relative w-full z-20 px-1 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] shrink-0"
+      : "absolute bottom-1 sm:bottom-2 left-1/2 -translate-x-1/2 z-20 max-w-[100vw] px-1",
     top: "absolute top-1 sm:top-2 left-1/2 -translate-x-1/2 z-[5] max-w-[100vw] px-1",
     left: "absolute left-0.5 sm:left-2 top-1/2 -translate-y-1/2 z-[5]",
     right: "absolute right-0.5 sm:right-2 top-1/2 -translate-y-1/2 z-[5]",
@@ -80,7 +87,10 @@ export default memo(function PlayerHand({
       : "";
 
   return (
-    <div className={containerClass[position]}>
+    <div
+      className={containerClass[position]}
+      data-testid={docked ? "player-hand-dock" : undefined}
+    >
       <div className={namePositionClass[position]}>
         <span
           className={`
@@ -102,12 +112,12 @@ export default memo(function PlayerHand({
       </div>
 
       <div
-        className={`hand-scroll flex ${isHorizontal ? "flex-row" : "flex-col"} ${handFlexCrossAlign} ${handFlexInset} justify-center overflow-x-auto overflow-y-visible max-w-[100vw] sm:overflow-visible [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${isMe && !isHorizontal ? "py-4" : ""}`}
+        className={`hand-scroll flex ${isHorizontal ? "flex-row" : "flex-col"} ${handFlexCrossAlign} ${handFlexInset} justify-center overflow-x-auto overflow-y-visible ${docked ? "w-full max-w-full" : "max-w-[100vw] sm:overflow-visible"} [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${isMe && !isHorizontal ? "py-4" : ""}`}
         style={
           isMe && isHorizontal && hand.length > 1
             ? {
-                marginLeft: `${(hand.length - 1) * (compact ? 8 : 16)}px`,
-                marginRight: `${(hand.length - 1) * (compact ? 8 : 16)}px`,
+                marginLeft: docked ? 0 : `${(hand.length - 1) * (compact ? 8 : 16)}px`,
+                marginRight: docked ? 0 : `${(hand.length - 1) * (compact ? 8 : 16)}px`,
               }
             : undefined
         }

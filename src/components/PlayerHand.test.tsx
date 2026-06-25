@@ -88,4 +88,22 @@ describe("PlayerHand", () => {
 
     expect(screen.getByText("●")).toBeInTheDocument();
   });
+
+  it("renders docked hand strip on mobile", () => {
+    render(
+      <PlayerHand
+        player={clientPlayer({ id: "p0", name: "Alice", seatIndex: 0 })}
+        hand={[card("h1", "A", "hearts"), card("h2", "K", "spades")]}
+        validCards={new Set(["h1", "h2"])}
+        isCurrentTurn
+        isMe
+        onCardClick={vi.fn()}
+        position="bottom"
+        compact
+        docked
+      />
+    );
+
+    expect(screen.getByTestId("player-hand-dock")).toBeInTheDocument();
+  });
 });

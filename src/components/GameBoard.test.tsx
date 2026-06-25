@@ -75,6 +75,27 @@ describe("GameBoard", () => {
     expect(socket.emit).toHaveBeenCalledWith("next_hand");
   });
 
+  it("docks my hand below the table on mobile", () => {
+    mediaQueryMock.setQuery("(max-width: 639.98px)", true);
+    mediaQueryMock.viewportWidth = 390;
+    const socket = createMockSocket();
+
+    render(
+      <GameBoard
+        socket={socket}
+        state={clientGameState({
+          phase: "playing",
+          currentPlayerIndex: 0,
+          myIndex: 0,
+        })}
+        hand={[card("h1", "A", "hearts"), card("h2", "2", "clubs")]}
+      />
+    );
+
+    expect(screen.getByTestId("player-hand-dock")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Play .* of/ })).toHaveLength(2);
+  });
+
   it("shows game over overlay with play again action", async () => {
     const user = userEvent.setup();
     const socket = createMockSocket();
